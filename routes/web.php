@@ -124,9 +124,12 @@ Route::middleware(['web'])->group(function () {
         // Reports
         Route::get('/clicks', [UserReportController::class, 'clicks'])->name('user.reports.clicks');
         Route::get('/conversions', [UserReportController::class, 'conversions'])->name('user.reports.conversions');
+        Route::get('/reports/export', [UserReportController::class, 'exportCsv'])->name('user.reports.export');
 
-        // Wallet & Profile
+        // Wallet & UPI & Profile
         Route::get('/wallet', [UserWalletController::class, 'index'])->name('user.wallet.index');
+        Route::get('/upi', [\App\Http\Controllers\User\UpiController::class, 'index'])->name('user.upi.index');
+        Route::post('/upi', [\App\Http\Controllers\User\UpiController::class, 'update'])->name('user.upi.update');
         Route::get('/profile', [ProfileController::class, 'index'])->name('user.profile.index');
         Route::post('/profile', [ProfileController::class, 'update'])->name('user.profile.update');
     });
