@@ -3,133 +3,296 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $campaign->name }} | Complete Task & Earn ₹{{ number_format($customerPayout, 2) }}</title>
+    <title>{{ $campaign->name }} | Earn ₹{{ number_format($customerPayout, 0) }} Instantly</title>
 
-    <!-- Google Fonts -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
-    <!-- Font Awesome -->
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+    <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Bootstrap 4 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
 
     <style>
+        :root {
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            --accent-green: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.4);
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0;
-            padding: 20px;
+            padding: 16px;
+            background-color: #0b0f17;
         }
 
-        /* 1. Theme: Gradient Blue */
+        /* 1. Theme: Gradient Blue (BankSathi Midnight Premium) */
         body.theme-gradient_blue {
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #1e293b 100%);
-            color: #fff;
+            background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, #090d16 100%);
+            color: #f8fafc;
         }
         .theme-gradient_blue .offer-card {
-            background: rgba(30, 41, 59, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.75), 0 0 30px rgba(99, 102, 241, 0.15);
         }
 
         /* 2. Theme: Dark Glassmorphism */
         body.theme-dark_glass {
-            background: radial-gradient(circle at top left, #111827, #030712);
-            color: #f9fafb;
+            background: radial-gradient(circle at 100% 0%, #181825 0%, #0d0e15 100%);
+            color: #ffffff;
         }
         .theme-dark_glass .offer-card {
-            background: rgba(17, 24, 39, 0.75);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            background: rgba(20, 24, 38, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(236, 72, 153, 0.1);
         }
 
         /* 3. Theme: Emerald Fortune */
         body.theme-emerald {
-            background: linear-gradient(135deg, #064e3b 0%, #022c22 100%);
+            background: radial-gradient(circle at 50% 0%, #064e3b 0%, #022c22 60%, #011711 100%);
             color: #ecfdf5;
         }
         .theme-emerald .offer-card {
-            background: rgba(6, 78, 59, 0.9);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            background: rgba(6, 78, 59, 0.85);
+            border: 1px solid rgba(52, 211, 153, 0.25);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8), 0 0 35px rgba(16, 185, 129, 0.2);
         }
 
-        /* 4. Theme: Clean Minimalist */
+        /* 4. Theme: Clean Light Minimalist */
         body.theme-clean_minimal {
-            background: #f8fafc;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
             color: #0f172a;
         }
         .theme-clean_minimal .offer-card {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
         }
 
         .offer-card {
-            border-radius: 24px;
+            border-radius: 28px;
             width: 100%;
-            max-width: 480px;
+            max-width: 440px;
             overflow: hidden;
-            padding: 32px 24px;
+            padding: 36px 28px;
+            position: relative;
+            animation: cardAppear 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        .reward-badge {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: #fff;
-            border-radius: 16px;
-            padding: 16px 20px;
-            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        @keyframes cardAppear {
+            from { opacity: 0; transform: translateY(20px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        .upi-chip {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: inherit;
-            font-size: 0.825rem;
+        /* Floating Logo Hexagon Frame */
+        .logo-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 16px;
+        }
+        .logo-frame {
+            width: 88px;
+            height: 88px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+        .offer-card:hover .logo-frame {
+            transform: scale(1.04) rotate(2deg);
+        }
+        .logo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 18px;
+        }
+
+        .category-badge {
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            color: #818cf8;
+            font-size: 0.725rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 5px 14px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            display: inline-block;
+        }
+        .theme-clean_minimal .category-badge {
+            background: #e0e7ff;
+            border-color: #c7d2fe;
+            color: #4338ca;
+        }
+
+        /* BankSathi Reward Cash Card */
+        .reward-card {
+            background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
+            border-radius: 20px;
+            padding: 20px;
+            color: #ffffff;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 12px 28px rgba(16, 185, 129, 0.35);
+            margin: 22px 0;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .reward-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .reward-title {
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            opacity: 0.95;
+        }
+        .reward-amount {
+            font-size: 2.6rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-top: 4px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        /* Step Indicators */
+        .steps-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            font-size: 0.75rem;
             font-weight: 600;
-            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .theme-clean_minimal .steps-bar {
+            background: #f1f5f9;
+            border-color: #e2e8f0;
+            color: #475569;
+        }
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .step-num {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #10b981;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 800;
+        }
+
+        /* UPI Input */
+        .upi-input-wrap {
+            position: relative;
+        }
+        .upi-field {
+            background: rgba(255, 255, 255, 0.06);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff !important;
+            border-radius: 16px !important;
+            padding: 14px 18px !important;
+            font-size: 1.05rem !important;
+            font-weight: 600;
+            transition: all 0.25s ease;
+        }
+        .theme-clean_minimal .upi-field {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            color: #0f172a !important;
+        }
+        .upi-field:focus {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: #10b981 !important;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3) !important;
+            outline: none;
+        }
+
+        /* Handle Chips */
+        .upi-chip {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #cbd5e1;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 6px 13px;
             border-radius: 20px;
             cursor: pointer;
             transition: all 0.2s ease;
-            display: inline-block;
             margin: 3px;
+            user-select: none;
         }
         .theme-clean_minimal .upi-chip {
-            background: #f1f5f9;
+            background: #e2e8f0;
             border-color: #cbd5e1;
             color: #334155;
         }
         .upi-chip:hover, .upi-chip:active {
-            background: #3b82f6;
-            color: #fff;
-            border-color: #3b82f6;
-            transform: translateY(-1px);
+            background: #10b981;
+            color: #ffffff;
+            border-color: #10b981;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(16, 185, 129, 0.3);
         }
 
+        /* Action Button */
         .btn-complete {
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             border: none;
-            color: #fff;
-            font-weight: 700;
-            font-size: 1.1rem;
-            padding: 16px;
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 1.05rem;
+            padding: 16px 20px;
             border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
-            transition: all 0.2s ease;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.45);
+            transition: all 0.25s ease;
+            letter-spacing: 0.3px;
         }
         .btn-complete:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 14px 30px rgba(37, 99, 235, 0.5);
-            color: #fff;
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 14px 35px rgba(37, 99, 235, 0.6);
+            color: #ffffff;
         }
 
-        .brand-footer {
-            font-size: 0.75rem;
-            opacity: 0.65;
-            letter-spacing: 0.5px;
+        .trust-tag {
+            font-size: 0.725rem;
+            opacity: 0.7;
+            margin-top: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
     </style>
 </head>
@@ -137,26 +300,39 @@
 
 <div class="offer-card text-center">
 
-    <!-- Campaign Logo / Fallback Icon -->
-    <div class="mb-3">
-        @if(!empty($campaign->logo_url))
-            <img src="{{ $campaign->logo_url }}" alt="{{ $campaign->name }}" class="img-fluid rounded-circle shadow-sm" style="max-height: 80px; width: 80px; object-fit: cover;">
-        @else
-            <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle shadow" style="width: 72px; height: 72px; font-size: 2rem;">
-                <i class="fas fa-gift"></i>
-            </div>
-        @endif
+    <!-- Campaign Logo -->
+    <div class="logo-wrapper">
+        <div class="logo-frame">
+            @if(!empty($campaign->logo_url))
+                <img src="{{ $campaign->logo_url }}" alt="{{ $campaign->name }}" class="logo-img">
+            @else
+                <div class="d-flex align-items-center justify-content-center w-100 h-100 text-primary font-weight-bold" style="font-size: 2rem;">
+                    <i class="fas fa-bolt"></i>
+                </div>
+            @endif
+        </div>
     </div>
 
-    <!-- Category & Campaign Name -->
-    <span class="badge badge-pill badge-primary px-3 py-1 mb-2 text-uppercase font-weight-bold" style="font-size: 0.75rem;">{{ $campaign->category }}</span>
-    <h3 class="font-weight-bold mb-2">{{ $campaign->name }}</h3>
-    <p class="small mb-4 opacity-75">{{ $campaign->short_description ?? 'Complete the simple task below to claim your reward.' }}</p>
+    <!-- Category & Offer Name -->
+    <div>
+        <span class="category-badge mb-2">{{ $campaign->category }}</span>
+        <h2 class="font-weight-extrabold mb-1" style="font-size: 1.75rem; letter-spacing: -0.5px;">{{ $campaign->name }}</h2>
+        <p class="small mb-2 opacity-75" style="font-size: 0.875rem;">{{ $campaign->short_description ?? 'Complete the simple task below to claim your guaranteed reward.' }}</p>
+    </div>
 
-    <!-- Reward Highlight -->
-    <div class="reward-badge mb-4">
-        <span class="text-uppercase small d-block font-weight-bold opacity-90" style="letter-spacing: 1px;">YOUR CASH REWARD</span>
-        <h2 class="font-weight-extrabold mb-0 mt-1" style="font-size: 2.2rem;">₹{{ number_format($customerPayout, 2) }}</h2>
+    <!-- BankSathi Guaranteed Reward Card -->
+    <div class="reward-card">
+        <div class="reward-title"><i class="fas fa-gift mr-1"></i> GUARANTEED CASH REWARD</div>
+        <div class="reward-amount">₹{{ number_format($customerPayout, 0) }}</div>
+    </div>
+
+    <!-- Steps Indicator -->
+    <div class="steps-bar">
+        <div class="step-item"><span class="step-num">1</span> Enter UPI</div>
+        <i class="fas fa-chevron-right opacity-50" style="font-size: 0.65rem;"></i>
+        <div class="step-item"><span class="step-num">2</span> Complete Task</div>
+        <i class="fas fa-chevron-right opacity-50" style="font-size: 0.65rem;"></i>
+        <div class="step-item"><span class="step-num">3</span> Get Cash</div>
     </div>
 
     <!-- Errors Display -->
@@ -166,23 +342,24 @@
         </div>
     @endif
 
-    <!-- UPI Task Submission Form -->
+    <!-- Form Submission -->
     <form action="{{ route('tracking.submit', $link->secure_token) }}" method="POST" id="taskForm">
         @csrf
 
         <div class="form-group text-left mb-3">
-            <label class="font-weight-bold small text-uppercase mb-2 opacity-90">
-                <i class="fas fa-wallet text-success mr-1"></i> Enter Your UPI ID for Cash Transfer
+            <label class="font-weight-bold small text-uppercase mb-2 opacity-90 d-flex align-items-center justify-content-between">
+                <span><i class="fas fa-wallet text-success mr-1"></i> Enter Your UPI ID</span>
+                <span class="badge badge-success px-2 py-1" style="font-size: 0.65rem;">Direct Payout</span>
             </label>
-            <div class="input-group input-group-lg">
-                <input type="text" name="upi_id" id="upiInput" class="form-control rounded-lg text-lowercase font-weight-bold" placeholder="username@ybl" value="{{ old('upi_id') }}" required autocomplete="off" style="font-size: 1rem;">
+            <div class="upi-input-wrap">
+                <input type="text" name="upi_id" id="upiInput" class="form-control upi-field text-lowercase" placeholder="username@ybl" value="{{ old('upi_id') }}" required autocomplete="off">
             </div>
-            <div id="upiFeedback" class="invalid-feedback d-none small mt-1">Please enter a valid UPI format (e.g. name@ybl).</div>
+            <div id="upiFeedback" class="invalid-feedback d-none small mt-1 text-danger">Please enter a valid UPI ID (e.g. name@ybl).</div>
         </div>
 
-        <!-- Quick Tap UPI Handle Suggestions -->
+        <!-- Quick Select Handles -->
         <div class="mb-4 text-left">
-            <span class="small font-weight-bold opacity-75 d-block mb-1">Quick Select Handle:</span>
+            <span class="small font-weight-bold opacity-75 d-block mb-1" style="font-size: 0.75rem;">Quick Select Handle:</span>
             <div class="d-flex flex-wrap">
                 <span class="upi-chip" onclick="appendHandle('@ybl')">@ybl</span>
                 <span class="upi-chip" onclick="appendHandle('@sbi')">@sbi</span>
@@ -196,16 +373,16 @@
 
         <!-- Submit Button -->
         <button type="submit" class="btn btn-complete btn-block">
-            <i class="fas fa-arrow-right mr-2"></i> Complete Task & Earn ₹{{ number_format($customerPayout, 2) }}
+            Complete Task & Earn ₹{{ number_format($customerPayout, 0) }} <i class="fas fa-arrow-right ml-2"></i>
         </button>
     </form>
 
-    <!-- Small Taskwala Branding Footer -->
-    <div class="brand-footer text-center mt-4 pt-3 border-top border-secondary">
-        <a href="https://taskwala.co.in" target="_blank" class="text-decoration-none color-inherit opacity-75">
-            <i class="fas fa-shield-alt text-primary mr-1"></i> Powered by <strong>taskwala.co.in</strong>
-        </a>
+    <!-- Trust Tag & Taskwala Branding -->
+    <div class="trust-tag">
+        <i class="fas fa-lock text-success"></i> 256-Bit Encrypted &amp; Verified by 
+        <a href="https://taskwala.co.in" target="_blank" class="text-decoration-none font-weight-bold color-inherit text-white opacity-90">taskwala.co.in</a>
     </div>
+
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -218,7 +395,7 @@
         if (input.length > 0) {
             $('#upiInput').val(input + handle).focus();
         } else {
-            $('#upiInput').val('username' + handle).focus().select();
+            $('#upiInput').val('mobile' + handle).focus().select();
         }
     }
 
@@ -236,3 +413,4 @@
 </script>
 </body>
 </html>
+
