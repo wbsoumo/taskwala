@@ -7,8 +7,6 @@
     RewriteRule ^storage/logs/.* - [F,L,NC]
     RewriteRule ^storage/framework/.* - [F,L,NC]
 
-    # Only rewrite to public if request is not already targeting /public
     RewriteCond %{REQUEST_URI} !^/public/
-    RewriteCond %{THE_REQUEST} !/public/
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
