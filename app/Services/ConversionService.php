@@ -13,10 +13,12 @@ use InvalidArgumentException;
 class ConversionService
 {
     protected LedgerService $ledgerService;
+    protected ReferralService $referralService;
 
-    public function __construct(LedgerService $ledgerService)
+    public function __construct(LedgerService $ledgerService, ReferralService $referralService)
     {
         $this->ledgerService = $ledgerService;
+        $this->referralService = $referralService;
     }
 
     /**
@@ -126,6 +128,8 @@ class ConversionService
                         description: "Affiliate commission earned for campaign {$click->campaign->name}"
                     );
                 }
+                // Process Referral Reward
+                $this->referralService->processConversionReferralReward($conversion);
             } elseif ($normalizedStatus === 'pending') {
                 if ($affiliateCommission > 0) {
                     $this->ledgerService->addPendingBalance($click->user, $affiliateCommission);
@@ -192,6 +196,8 @@ class ConversionService
                     reference: 'MANUAL_APPROVE_' . $conversion->id,
                     description: "Manual conversion approval by admin."
                 );
+                // Process Referral Reward
+                $this->referralService->processConversionReferralReward($conversion);
             } elseif ($oldStatus === 'approved' && in_array($newStatus, ['rejected', 'reversed', 'cancelled']) && $commission > 0) {
                 // Debit/Reverse wallet
                 $this->ledgerService->recordTransaction(
@@ -203,6 +209,8 @@ class ConversionService
                     reference: 'REVERSAL_' . $conversion->id,
                     description: "Conversion reversal by admin. Reason: {$reason}"
                 );
+                // Reverse Referral Reward
+                $this->referralService->reverseConversionReferralReward($conversion);
             }
 
             AuditService::log(

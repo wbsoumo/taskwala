@@ -22,6 +22,8 @@ class User extends Authenticatable
         'upi_id',
         'upi_holder_name',
         'notes',
+        'referral_code',
+        'referred_by',
         'last_login_at',
         'last_login_ip',
     ];
@@ -48,6 +50,9 @@ class User extends Authenticatable
             if (empty($user->public_id)) {
                 $user->public_id = (string) Str::uuid();
             }
+            if (empty($user->referral_code)) {
+                $user->referral_code = 'REF' . strtoupper(Str::random(7));
+            }
         });
 
         static::created(function ($user) {
@@ -59,6 +64,21 @@ class User extends Authenticatable
                 'currency' => config('platform.currency', 'INR'),
             ]);
         });
+    }
+
+    public function referrer()
+    {
+        return $this->belongsTo(User::class, 'referred_by');
+    }
+
+    public function referredUsers()
+    {
+        return $this->hasMany(User::class, 'referred_by');
+    }
+
+    public function referralEarnings()
+    {
+        return $this->hasMany(ReferralEarning::class, 'referrer_id');
     }
 
     public function wallet()
