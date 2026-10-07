@@ -26,102 +26,102 @@
     </div>
 </div>
 
-<!-- 2-Column Summary Cards Layout -->
+<!-- 2-Column Summary Cards Layout (2 per row on Mobile & Desktop) -->
 <div class="row mb-4">
     <!-- Row 1: Traffic & Conversions -->
-    <div class="col-md-6 mb-3">
+    <div class="col-6 col-md-6 mb-3">
         <div class="small-box bg-info elevation-2 mb-0 h-100">
-            <div class="inner p-3">
-                <h3>{{ number_format($totalClicks) }}</h3>
-                <p class="font-weight-bold mb-1">Total Clicks Generated</p>
-                <small class="d-block opacity-75">All traffic directed across active affiliate campaigns</small>
+            <div class="inner p-2 p-md-3">
+                <h3 class="h4 h3-md">{{ number_format($totalClicks) }}</h3>
+                <p class="font-weight-bold mb-1 small text-truncate">Total Clicks</p>
+                <small class="d-none d-md-block opacity-75">All traffic directed across active campaigns</small>
             </div>
-            <div class="icon">
+            <div class="icon d-none d-sm-block">
                 <i class="fas fa-mouse-pointer"></i>
             </div>
-            <a href="{{ route('user.reports.clicks') }}" class="small-box-footer">
-                View Click Details <i class="fas fa-arrow-circle-right ml-1"></i>
+            <a href="{{ route('user.reports.clicks') }}" class="small-box-footer small py-1">
+                View Details <i class="fas fa-arrow-circle-right ml-1"></i>
             </a>
         </div>
     </div>
 
-    <div class="col-md-6 mb-3">
+    <div class="col-6 col-md-6 mb-3">
         <div class="small-box bg-success elevation-2 mb-0 h-100">
-            <div class="inner p-3">
-                <h3>{{ number_format($totalConversions) }}</h3>
-                <p class="font-weight-bold mb-1">Total Conversions</p>
-                <small class="d-block">Approved: <strong>{{ $approvedConversions }}</strong> | Pending: <strong>{{ $pendingConversions }}</strong></small>
+            <div class="inner p-2 p-md-3">
+                <h3 class="h4 h3-md">{{ number_format($totalConversions) }}</h3>
+                <p class="font-weight-bold mb-1 small text-truncate">Total Conversions</p>
+                <small class="d-none d-md-block">Approved: <strong>{{ $approvedConversions }}</strong> | Pending: <strong>{{ $pendingConversions }}</strong></small>
             </div>
-            <div class="icon">
+            <div class="icon d-none d-sm-block">
                 <i class="fas fa-check-double"></i>
             </div>
-            <a href="{{ route('user.reports.conversions') }}" class="small-box-footer">
+            <a href="{{ route('user.reports.conversions') }}" class="small-box-footer small py-1">
                 View Conversions <i class="fas fa-arrow-circle-right ml-1"></i>
             </a>
         </div>
     </div>
 
     <!-- Row 2: Earnings Lifecycle -->
-    <div class="col-md-6 mb-3">
+    <div class="col-6 col-md-6 mb-3">
         <div class="small-box bg-warning elevation-2 mb-0 h-100 text-white">
-            <div class="inner p-3">
-                <h3>₹{{ number_format($pendingEarnings, 2) }}</h3>
-                <p class="font-weight-bold mb-1 text-dark">Pending Earnings</p>
-                <small class="d-block text-dark opacity-75">Commissions awaiting advertiser validation</small>
+            <div class="inner p-2 p-md-3">
+                <h3 class="h4 h3-md text-dark">₹{{ number_format($pendingEarnings, 2) }}</h3>
+                <p class="font-weight-bold mb-1 text-dark small text-truncate">Pending Earnings</p>
+                <small class="d-none d-md-block text-dark opacity-75">Commissions awaiting validation</small>
             </div>
-            <div class="icon">
+            <div class="icon d-none d-sm-block">
                 <i class="fas fa-clock text-dark"></i>
             </div>
-            <a href="{{ route('user.reports.conversions', ['status' => 'pending']) }}" class="small-box-footer text-dark">
+            <a href="{{ route('user.reports.conversions', ['status' => 'pending']) }}" class="small-box-footer text-dark small py-1">
                 View Pending <i class="fas fa-arrow-circle-right ml-1"></i>
             </a>
         </div>
     </div>
 
-    <div class="col-md-6 mb-3">
+    <div class="col-6 col-md-6 mb-3">
         <div class="small-box bg-teal elevation-2 mb-0 h-100">
-            <div class="inner p-3 text-white">
-                <h3>₹{{ number_format($approvedEarnings, 2) }}</h3>
-                <p class="font-weight-bold mb-1">Approved Earnings</p>
-                <small class="d-block opacity-75">Verified commissions credited to your account</small>
+            <div class="inner p-2 p-md-3 text-white">
+                <h3 class="h4 h3-md">₹{{ number_format($approvedEarnings, 2) }}</h3>
+                <p class="font-weight-bold mb-1 small text-truncate">Approved Earnings</p>
+                <small class="d-none d-md-block opacity-75">Verified commissions credited</small>
             </div>
-            <div class="icon">
+            <div class="icon d-none d-sm-block">
                 <i class="fas fa-coins"></i>
             </div>
-            <a href="{{ route('user.reports.conversions', ['status' => 'approved']) }}" class="small-box-footer">
+            <a href="{{ route('user.reports.conversions', ['status' => 'approved']) }}" class="small-box-footer small py-1">
                 View Approved <i class="fas fa-arrow-circle-right ml-1"></i>
             </a>
         </div>
     </div>
 
     <!-- Row 3: Available Balance & Paid Payouts -->
-    <div class="col-md-6 mb-3">
+    <div class="col-6 col-md-6 mb-3">
         <div class="small-box bg-primary elevation-2 mb-0 h-100">
-            <div class="inner p-3">
-                <h3>₹{{ number_format($availableBalance, 2) }}</h3>
-                <p class="font-weight-bold mb-1">Available Wallet Balance</p>
-                <small class="d-block opacity-75">Ready for UPI settlement disbursement</small>
+            <div class="inner p-2 p-md-3">
+                <h3 class="h4 h3-md">₹{{ number_format($availableBalance, 2) }}</h3>
+                <p class="font-weight-bold mb-1 small text-truncate">Wallet Balance</p>
+                <small class="d-none d-md-block opacity-75">Ready for UPI settlement</small>
             </div>
-            <div class="icon">
+            <div class="icon d-none d-sm-block">
                 <i class="fas fa-wallet"></i>
             </div>
-            <a href="{{ route('user.wallet.index') }}" class="small-box-footer">
+            <a href="{{ route('user.wallet.index') }}" class="small-box-footer small py-1">
                 Manage Wallet <i class="fas fa-arrow-circle-right ml-1"></i>
             </a>
         </div>
     </div>
 
-    <div class="col-md-6 mb-3">
+    <div class="col-6 col-md-6 mb-3">
         <div class="small-box bg-purple elevation-2 mb-0 h-100">
-            <div class="inner p-3 text-white">
-                <h3>₹{{ number_format($paidEarnings, 2) }}</h3>
-                <p class="font-weight-bold mb-1">Paid Earnings</p>
-                <small class="d-block opacity-75">Total payouts successfully transferred to your bank/UPI</small>
+            <div class="inner p-2 p-md-3 text-white">
+                <h3 class="h4 h3-md">₹{{ number_format($paidEarnings, 2) }}</h3>
+                <p class="font-weight-bold mb-1 small text-truncate">Paid Earnings</p>
+                <small class="d-none d-md-block opacity-75">Payouts transferred to bank/UPI</small>
             </div>
-            <div class="icon">
+            <div class="icon d-none d-sm-block">
                 <i class="fas fa-hand-holding-usd"></i>
             </div>
-            <a href="{{ route('user.wallet.index') }}" class="small-box-footer">
+            <a href="{{ route('user.wallet.index') }}" class="small-box-footer small py-1">
                 Payout History <i class="fas fa-arrow-circle-right ml-1"></i>
             </a>
         </div>
