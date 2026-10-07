@@ -34,6 +34,9 @@ Route::get('/', function () {
 
 // 3. ADMIN AUTHENTICATION & DASHBOARD REALM (/admin)
 Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', function () {
+        return redirect()->route('admin.login');
+    });
     Route::get('/login', [AdminLoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AdminLoginController::class, 'login']);
     Route::post('/logout', [AdminLoginController::class, 'logout'])->name('logout');
