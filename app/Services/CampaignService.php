@@ -15,6 +15,14 @@ class CampaignService
         return DB::transaction(function () use ($data, $adminId) {
             $data['created_by'] = $adminId;
             $data['updated_by'] = $adminId;
+
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('campaigns', 'postback_provider_id')) {
+                unset($data['postback_provider_id']);
+            }
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('campaigns', 'postback_secret_key')) {
+                unset($data['postback_secret_key']);
+            }
+
             $campaign = Campaign::create($data);
 
             AuditService::log(
