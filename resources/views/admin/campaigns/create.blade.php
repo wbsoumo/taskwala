@@ -50,7 +50,7 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-3 form-group">
+                        <div class="col-md-4 form-group">
                             <label>Public Offer Page Theme <span class="text-danger">*</span></label>
                             <select name="theme" class="form-control" required>
                                 <option value="gradient_blue" {{ old('theme', 'gradient_blue') === 'gradient_blue' ? 'selected' : '' }}>Vibrant Gradient Blue (Default)</option>
@@ -59,7 +59,7 @@
                                 <option value="clean_minimal" {{ old('theme') === 'clean_minimal' ? 'selected' : '' }}>Clean Light Minimalist</option>
                             </select>
                         </div>
-                        <div class="col-md-3 form-group">
+                        <div class="col-md-4 form-group">
                             <label>Offer Postback Provider</label>
                             <select name="postback_provider_id" class="form-control">
                                 <option value="">-- Global / System Default --</option>
@@ -68,12 +68,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-3 form-group">
-                            <label>Offer Postback Secret Key</label>
-                            <input type="text" name="postback_secret_key" class="form-control" value="{{ old('postback_secret_key') }}" placeholder="Auto-generated if left blank">
-                            <small class="form-text text-muted">Secret required in GET postback parameter <code>&amp;secret=...</code></small>
-                        </div>
-                        <div class="col-md-3 form-group">
+                        <div class="col-md-4 form-group">
                             <label>Advertiser / Network Name <span class="text-danger">*</span></label>
                             <input type="text" name="advertiser_name" class="form-control" value="{{ old('advertiser_name') }}" placeholder="e.g. Network A" required>
                         </div>

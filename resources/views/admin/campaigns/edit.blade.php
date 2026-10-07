@@ -58,27 +58,22 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4 form-group">
+                        <div class="col-md-5 form-group">
                             <label>Advertiser / Network Name <span class="text-danger">*</span></label>
                             <input type="text" name="advertiser_name" class="form-control" value="{{ old('advertiser_name', $campaign->advertiser_name) }}" required>
                         </div>
-                        <div class="col-md-3 form-group">
+                        <div class="col-md-4 form-group">
                             <label>Conversion Event <span class="text-danger">*</span></label>
                             <input type="text" name="conversion_event" class="form-control" value="{{ old('conversion_event', $campaign->conversion_event) }}" required>
                         </div>
-                        <div class="col-md-2 form-group">
+                        <div class="col-md-3 form-group">
                             <label>Postback Provider</label>
                             <select name="postback_provider_id" class="form-control">
-                                <option value="">-- Global --</option>
+                                <option value="">-- Global / System Default --</option>
                                 @foreach($providers as $p)
                                     <option value="{{ $p->id }}" {{ old('postback_provider_id', $campaign->postback_provider_id) == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
                                 @endforeach
                             </select>
-                        </div>
-                        <div class="col-md-3 form-group">
-                            <label>Offer Postback Secret Key</label>
-                            <input type="text" name="postback_secret_key" class="form-control" value="{{ old('postback_secret_key', $campaign->postback_secret_key) }}" placeholder="e.g. sec_kotak_8829">
-                            <small class="form-text text-muted">Mandatory secret required in postback URL GET parameter <code>&amp;secret=...</code></small>
                         </div>
                     </div>
 
