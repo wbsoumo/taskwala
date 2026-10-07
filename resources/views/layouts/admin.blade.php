@@ -132,23 +132,49 @@
 
                     <li class="nav-header">POSTBACKS & INTEGRATION</li>
 
-                    <li class="nav-item">
-                        <a href="{{ route('admin.postbacks.providers') }}" class="nav-link {{ request()->routeIs('admin.postbacks.providers') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-network-wired"></i>
-                            <p>Postback Providers</p>
+                    <li class="nav-item {{ request()->is('admin/postbacks*') ? 'menu-open' : '' }}">
+                        <a href="#" class="nav-link {{ request()->is('admin/postbacks*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-network-wired text-warning"></i>
+                            <p>Postbacks <i class="right fas fa-angle-left"></i></p>
                         </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ route('admin.postbacks.ip_whitelists') }}" class="nav-link {{ request()->routeIs('admin.postbacks.ip_whitelists') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-shield-alt"></i>
-                            <p>IP Whitelists</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ route('admin.postbacks.logs') }}" class="nav-link {{ request()->routeIs('admin.postbacks.logs') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-list-alt"></i>
-                            <p>Postback Logs</p>
-                        </a>
+                        <ul class="nav nav-treeview">
+                            <li class="nav-item">
+                                <a href="{{ route('admin.postbacks.global') }}" class="nav-link {{ request()->routeIs('admin.postbacks.global') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-primary"></i>
+                                    <p>Global Postback</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.postbacks.offer_wise') }}" class="nav-link {{ request()->routeIs('admin.postbacks.offer_wise') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-success"></i>
+                                    <p>Offer Wise Postback</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.postbacks.test') }}" class="nav-link {{ request()->routeIs('admin.postbacks.test*') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-warning"></i>
+                                    <p>Test Postback</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.postbacks.providers') }}" class="nav-link {{ request()->routeIs('admin.postbacks.providers') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p>Integration Networks</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.postbacks.ip_whitelists') }}" class="nav-link {{ request()->routeIs('admin.postbacks.ip_whitelists') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p>IP Whitelists</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.postbacks.logs') }}" class="nav-link {{ request()->routeIs('admin.postbacks.logs') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p>Postback Logs</p>
+                                </a>
+                            </li>
+                        </ul>
                     </li>
 
                     <li class="nav-header">FINANCIAL LEDGER</li>

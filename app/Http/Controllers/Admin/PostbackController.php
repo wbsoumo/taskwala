@@ -12,6 +12,77 @@ use Illuminate\Validation\Rule;
 
 class PostbackController extends Controller
 {
+    public function globalPostback()
+    {
+        $globalSecret = config('postback.global_secret', env('POSTBACK_SECRET', 'taskwala_postback_secret_key_2026'));
+        $globalUrl = url('/api/v1/postback/global');
+        $globalLogs = PostbackLog::whereNull('postback_provider_id')->latest('created_at')->take(10)->get();
+
+        return view('admin.postbacks.global', compact('globalSecret', 'globalUrl', 'globalLogs'));
+    }
+
+    public function offerWisePostback()
+    {
+        $campaigns = \App\Models\Campaign::with('postbackProvider')
+            ->latest()
+            ->paginate(15);
+
+        $providers = PostbackProvider::where('status', 'active')->get();
+
+        return view('admin.postbacks.offer_wise', compact('campaigns', 'providers'));
+    }
+
+    public function testPostbackForm()
+    {
+        $recentClicks = \App\Models\Click::with('campaign')->latest('created_at')->take(10)->get();
+        $providers = PostbackProvider::where('status', 'active')->get();
+
+        return view('admin.postbacks.test', compact('recentClicks', 'providers'));
+    }
+
+    public function sendTestPostback(Request $request)
+    {
+        $validated = $request->validate([
+            'provider_slug' => ['required', 'string'],
+            'click_id' => ['required', 'string'],
+            'conversion_id' => ['nullable', 'string'],
+            'status' => ['required', Rule::in(['approved', 'pending', 'rejected'])],
+            'secret' => ['nullable', 'string'],
+            'http_method' => ['required', Rule::in(['GET', 'POST'])],
+        ]);
+
+        $url = url('/api/v1/postback/' . $validated['provider_slug']);
+        $params = [
+            'click_id' => $validated['click_id'],
+            'conversion_id' => $validated['conversion_id'] ?? ('TEST_TX_' . rand(1000, 9999)),
+            'status' => $validated['status'],
+        ];
+
+        if (!empty($validated['secret'])) {
+            $params['secret'] = $validated['secret'];
+        }
+
+        try {
+            if ($validated['http_method'] === 'GET') {
+                $response = \Illuminate\Support\Facades\Http::get($url, $params);
+            } else {
+                $response = \Illuminate\Support\Facades\Http::post($url, $params);
+            }
+
+            $result = [
+                'status_code' => $response->status(),
+                'body' => $response->json() ?? $response->body(),
+                'target_url' => $url,
+                'method' => $validated['http_method'],
+                'params' => $params,
+            ];
+
+            return redirect()->route('admin.postbacks.test')->with('test_result', $result)->with('success', 'Test S2S Postback fired successfully!');
+        } catch (\Exception $e) {
+            return redirect()->route('admin.postbacks.test')->withErrors(['test_error' => 'Failed to fire S2S Postback: ' . $e->getMessage()]);
+        }
+    }
+
     public function providers()
     {
         $providers = PostbackProvider::withCount(['ipWhitelists', 'logs'])->get();

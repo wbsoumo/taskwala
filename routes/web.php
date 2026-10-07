@@ -68,6 +68,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/tracking/conversions/{conversion}/status', [AdminTrackingController::class, 'updateConversionStatus'])->name('tracking.conversions.status');
 
         // Postbacks Management
+        Route::get('/postbacks/global', [AdminPostbackController::class, 'globalPostback'])->name('postbacks.global');
+        Route::get('/postbacks/offer-wise', [AdminPostbackController::class, 'offerWisePostback'])->name('postbacks.offer_wise');
+        Route::get('/postbacks/test', [AdminPostbackController::class, 'testPostbackForm'])->name('postbacks.test');
+        Route::post('/postbacks/test', [AdminPostbackController::class, 'sendTestPostback'])->name('postbacks.test.send');
         Route::get('/postbacks/providers', [AdminPostbackController::class, 'providers'])->name('postbacks.providers');
         Route::post('/postbacks/providers', [AdminPostbackController::class, 'storeProvider']);
         Route::get('/postbacks/ip-whitelists', [AdminPostbackController::class, 'ipWhitelists'])->name('postbacks.ip_whitelists');
