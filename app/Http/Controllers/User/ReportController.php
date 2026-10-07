@@ -59,8 +59,9 @@ class ReportController extends Controller
 
         if ($request->filled('upi_search')) {
             $upiSearch = trim($request->upi_search);
-            $query->whereHas('customerPayout', function ($q) use ($upiSearch) {
-                $q->where('upi_id', 'like', "%{$upiSearch}%");
+            $query->where(function ($q) use ($upiSearch) {
+                $q->whereHas('customerPayout', fn($cp) => $cp->where('upi_id', 'like', "%{$upiSearch}%"))
+                  ->orWhereHas('click.customerPayout', fn($cp) => $cp->where('upi_id', 'like', "%{$upiSearch}%"));
             });
         }
 
@@ -100,8 +101,9 @@ class ReportController extends Controller
 
         if ($request->filled('upi_search')) {
             $upiSearch = trim($request->upi_search);
-            $query->whereHas('customerPayout', function ($q) use ($upiSearch) {
-                $q->where('upi_id', 'like', "%{$upiSearch}%");
+            $query->where(function ($q) use ($upiSearch) {
+                $q->whereHas('customerPayout', fn($cp) => $cp->where('upi_id', 'like', "%{$upiSearch}%"))
+                  ->orWhereHas('click.customerPayout', fn($cp) => $cp->where('upi_id', 'like', "%{$upiSearch}%"));
             });
         }
 
@@ -130,8 +132,9 @@ class ReportController extends Controller
 
             foreach ($records as $row) {
                 $snap = $row->payoutSnapshot;
-                $upi = $row->customerPayout?->upi_id ?? 'N/A';
-                $payoutStatus = $row->customerPayout ? ucfirst($row->customerPayout->status) : ($row->status === 'approved' ? 'Paid' : 'Pending');
+                $cp = $row->customerPayout ?? $row->click?->customerPayout;
+                $upi = $cp?->upi_id ?? 'N/A';
+                $payoutStatus = $cp ? ucfirst($cp->status) : ($row->status === 'approved' ? 'Paid' : 'Pending');
 
                 fputcsv($file, [
                     $row->conversion_time ? $row->conversion_time->format('Y-m-d H:i:s') : $row->created_at->format('Y-m-d H:i:s'),

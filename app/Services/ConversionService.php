@@ -77,9 +77,13 @@ class ConversionService
                 'user_agent' => $userAgent ?? $click->user_agent,
             ]);
 
-            // Mark click status as converted
+            // Mark click status as converted and link any existing CustomerPayout record
             $click->update(['status' => 'converted']);
             $click->link->increment('conversion_count');
+            
+            \App\Models\CustomerPayout::where('click_id', $click->click_id)
+                ->whereNull('conversion_id')
+                ->update(['conversion_id' => $conversion->id]);
 
             // 4. Freeze Immutable Payout Snapshot
             $advertiserPayout = (float) $click->campaign->advertiser_payout;

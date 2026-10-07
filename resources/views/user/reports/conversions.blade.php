@@ -82,9 +82,15 @@
                 </thead>
                 <tbody>
                     @forelse($conversions as $conv)
+                        @php
+                            $cp = $conv->customerPayout ?? $conv->click?->customerPayout;
+                            $upiId = $cp?->upi_id ?? 'N/A';
+                            $payoutStatus = $cp ? ucfirst($cp->status) : ($conv->status === 'approved' ? 'Paid' : 'Pending');
+                            $payoutBadgeColor = $cp ? ($cp->status === 'paid' ? 'success' : ($cp->status === 'pending' ? 'warning' : 'danger')) : ($conv->status === 'approved' ? 'success' : 'secondary');
+                        @endphp
                         <tr>
                             <td class="font-weight-bold text-primary">
-                                <i class="fas fa-at text-muted mr-1"></i>{{ $conv->customerPayout?->upi_id ?? 'N/A' }}
+                                <i class="fas fa-at text-muted mr-1"></i>{{ $upiId }}
                             </td>
                             <td><code>{{ $conv->public_id }}</code></td>
                             <td class="font-weight-bold text-dark">{{ $conv->campaign->name ?? 'N/A' }}</td>
@@ -96,8 +102,8 @@
                             <td class="text-info font-weight-bold">₹{{ number_format($conv->payoutSnapshot->customer_payout ?? 0, 2) }}</td>
                             <td class="text-success font-weight-bold">₹{{ number_format($conv->payoutSnapshot->affiliate_commission ?? 0, 2) }}</td>
                             <td>
-                                <span class="badge badge-{{ $conv->customerPayout ? ($conv->customerPayout->status === 'paid' ? 'success' : 'warning') : ($conv->status === 'approved' ? 'success' : 'secondary') }} px-2 py-1">
-                                    {{ $conv->customerPayout ? ucfirst($conv->customerPayout->status) : ($conv->status === 'approved' ? 'Paid' : 'Pending') }}
+                                <span class="badge badge-{{ $payoutBadgeColor }} px-2 py-1">
+                                    {{ $payoutStatus }}
                                 </span>
                             </td>
                             <td class="small text-muted">{{ $conv->conversion_time ? $conv->conversion_time->format('d M Y, H:i') : 'N/A' }}</td>
@@ -112,7 +118,7 @@
                                         <div class="modal-content">
                                             <div class="modal-header bg-light">
                                                 <h5 class="modal-title font-weight-bold text-dark">
-                                                    <i class="fas fa-history text-primary mr-2"></i> UPI Timeline: {{ $conv->customerPayout?->upi_id ?? $conv->public_id }}
+                                                    <i class="fas fa-history text-primary mr-2"></i> UPI Timeline: {{ $upiId }}
                                                 </h5>
                                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                     <span aria-hidden="true">&times;</span>
@@ -128,7 +134,7 @@
                                                     <div class="mb-3">
                                                         <i class="fas fa-at text-info"></i>
                                                         <strong class="d-block text-dark">2. Customer UPI Recorded</strong>
-                                                        <small class="text-muted">UPI ID: <code>{{ $conv->customerPayout?->upi_id ?? 'Default / N/A' }}</code></small>
+                                                        <small class="text-muted">UPI ID: <code>{{ $upiId }}</code></small>
                                                     </div>
                                                     <div class="mb-3">
                                                         <i class="fas fa-{{ $conv->status === 'approved' ? 'check-double text-success' : ($conv->status === 'pending' ? 'clock text-warning' : 'times-circle text-danger') }}"></i>
@@ -137,7 +143,7 @@
                                                     </div>
                                                     <div>
                                                         <i class="fas fa-wallet text-{{ $conv->status === 'approved' ? 'success' : 'secondary' }}"></i>
-                                                        <strong class="d-block text-dark">4. Payout Status: {{ $conv->customerPayout ? ucfirst($conv->customerPayout->status) : ($conv->status === 'approved' ? 'Paid' : 'Pending') }}</strong>
+                                                        <strong class="d-block text-dark">4. Payout Status: {{ $payoutStatus }}</strong>
                                                         <small class="text-muted">Customer Reward: ₹{{ number_format($conv->payoutSnapshot->customer_payout ?? 0, 2) }}</small>
                                                     </div>
                                                 </div>
@@ -160,12 +166,23 @@
         <!-- Mobile Card Stack View -->
         <div class="d-md-none p-3">
             @forelse($conversions as $conv)
+                @php
+                    $cp = $conv->customerPayout ?? $conv->click?->customerPayout;
+                    $upiId = $cp?->upi_id ?? 'N/A';
+                    $payoutStatus = $cp ? ucfirst($cp->status) : ($conv->status === 'approved' ? 'Paid' : 'Pending');
+                    $payoutBadgeColor = $cp ? ($cp->status === 'paid' ? 'success' : ($cp->status === 'pending' ? 'warning' : 'danger')) : ($conv->status === 'approved' ? 'success' : 'secondary');
+                @endphp
                 <div class="card card-outline card-{{ $conv->status === 'approved' ? 'success' : ($conv->status === 'pending' ? 'warning' : 'danger') }} shadow-sm mb-3">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
-                        <h6 class="font-weight-bold mb-0 text-primary"><i class="fas fa-at mr-1"></i>{{ $conv->customerPayout?->upi_id ?? 'N/A' }}</h6>
-                        <span class="badge badge-{{ $conv->status === 'approved' ? 'success' : ($conv->status === 'pending' ? 'warning' : 'danger') }} px-2 py-1 text-uppercase">
-                            {{ ucfirst($conv->status) }}
-                        </span>
+                        <h6 class="font-weight-bold mb-0 text-primary"><i class="fas fa-at mr-1"></i>{{ $upiId }}</h6>
+                        <div>
+                            <span class="badge badge-{{ $conv->status === 'approved' ? 'success' : ($conv->status === 'pending' ? 'warning' : 'danger') }} px-2 py-1 text-uppercase mr-1">
+                                {{ ucfirst($conv->status) }}
+                            </span>
+                            <span class="badge badge-{{ $payoutBadgeColor }} px-2 py-1 text-uppercase">
+                                {{ $payoutStatus }}
+                            </span>
+                        </div>
                     </div>
                     <div class="card-body py-2">
                         <div class="d-flex justify-content-between my-1 small">
@@ -179,6 +196,10 @@
                         <div class="d-flex justify-content-between my-1 small">
                             <span class="text-muted">My Commission:</span>
                             <span class="font-weight-bold text-success">₹{{ number_format($conv->payoutSnapshot->affiliate_commission ?? 0, 2) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between my-1 small">
+                            <span class="text-muted">Payout Status:</span>
+                            <span class="font-weight-bold text-dark">{{ $payoutStatus }}</span>
                         </div>
                         <div class="d-flex justify-content-between my-1 small">
                             <span class="text-muted">Conversion Date:</span>
