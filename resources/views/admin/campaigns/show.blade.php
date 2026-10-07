@@ -38,6 +38,12 @@
                     <li class="list-group-item">
                         <b>Conversion Event</b> <span class="float-right">{{ $campaign->conversion_event }}</span>
                     </li>
+                    <li class="list-group-item">
+                        <b>Offer Postback Webhook</b> 
+                        <span class="float-right">
+                            <code>{{ url('/api/v1/postback/' . ($campaign->postbackProvider->slug ?? 'global')) }}</code>
+                        </span>
+                    </li>
                 </ul>
                 @if($campaign->terms)
                     <div class="callout callout-info">

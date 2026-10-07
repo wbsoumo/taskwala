@@ -43,8 +43,8 @@
                     @csrf
                     <div class="form-group">
                         <label>Provider <span class="text-danger">*</span></label>
-                        <select name="postback_provider_id" class="form-control" required>
-                            <option value="">-- Choose Provider --</option>
+                        <select name="postback_provider_id" class="form-control">
+                            <option value="">-- All Providers (Global Whitelist) --</option>
                             @foreach($providers as $p)
                                 <option value="{{ $p->id }}">{{ $p->name }}</option>
                             @endforeach

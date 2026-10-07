@@ -37,6 +37,26 @@
                             <td>
                                 <span class="badge badge-{{ $log->response_code === 200 ? 'success' : 'warning' }}">{{ $log->response_code }}</span>
                                 <small class="d-block text-muted">{{ Str::limit($log->rejection_reason, 25) }}</small>
+                                @if($log->response_payload)
+                                    <button type="button" class="btn btn-xs btn-outline-info mt-1" data-toggle="modal" data-target="#respModal{{ $log->id }}">
+                                        <i class="fas fa-eye mr-1"></i> Response JSON
+                                    </button>
+                                    <div class="modal fade text-left" id="respModal{{ $log->id }}" tabindex="-1" role="dialog">
+                                        <div class="modal-dialog modal-dialog-centered" role="document">
+                                            <div class="modal-content">
+                                                <div class="modal-header bg-dark text-white">
+                                                    <h5 class="modal-title font-weight-bold">Postback Response Payload (Req #{{ $log->request_id }})</h5>
+                                                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                                                </div>
+                                                <div class="modal-body bg-light">
+                                                    <p class="mb-1 text-muted small"><strong>HTTP Code:</strong> {{ $log->response_code }}</p>
+                                                    <p class="mb-1 text-muted small"><strong>Reason:</strong> {{ $log->rejection_reason }}</p>
+                                                    <pre class="bg-dark text-success p-3 rounded mb-0" style="max-height: 250px; overflow-y: auto;"><code>{{ json_encode($log->response_payload, JSON_PRETTY_PRINT) }}</code></pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
                             </td>
                             <td>{{ $log->created_at ? $log->created_at->format('M d, H:i:s') : 'N/A' }}</td>
                         </tr>

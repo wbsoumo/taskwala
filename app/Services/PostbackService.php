@@ -25,34 +25,47 @@ class PostbackService
         $requestId = 'REQ_' . Str::ulid();
         $sourceIp = $request->ip() ?? '127.0.0.1';
 
-        $provider = PostbackProvider::with('ipWhitelists')
-            ->where('slug', $providerSlug)
-            ->first();
+        // 1. Resolve Postback Provider (Supports Global Provider or Network-Specific Provider)
+        $provider = null;
+        if ($providerSlug !== 'global') {
+            $provider = PostbackProvider::with('ipWhitelists')
+                ->where('slug', $providerSlug)
+                ->first();
 
-        if (!$provider || $provider->status !== 'active') {
-            $this->logAttempt(
-                requestId: $requestId,
-                provider: $provider,
-                request: $request,
-                authResult: false,
-                ipResult: false,
-                clickResult: false,
-                conversionResult: false,
-                reason: 'Invalid or inactive postback provider.',
-                responseCode: 404,
-                startTime: $startTime
-            );
+            if (!$provider || $provider->status !== 'active') {
+                $response = [
+                    'status' => 'error',
+                    'message' => 'Postback provider not found or inactive.',
+                    'code' => 404,
+                ];
 
-            return [
-                'status' => 'error',
-                'message' => 'Postback provider not found or inactive.',
-                'code' => 404,
-            ];
+                $this->logAttempt(
+                    requestId: $requestId,
+                    provider: $provider,
+                    request: $request,
+                    authResult: false,
+                    ipResult: false,
+                    clickResult: false,
+                    conversionResult: false,
+                    reason: 'Invalid or inactive postback provider slug.',
+                    responseCode: 404,
+                    responsePayload: $response,
+                    startTime: $startTime
+                );
+
+                return $response;
+            }
         }
 
-        // 1. IP Whitelist Check
+        // 2. IP Whitelist Check (Global + Provider-specific IP whitelists)
         $ipAllowed = $this->verifyIpWhitelist($provider, $sourceIp);
         if (!$ipAllowed) {
+            $response = [
+                'status' => 'error',
+                'message' => "IP address {$sourceIp} is not authorized for postback.",
+                'code' => 403,
+            ];
+
             $this->logAttempt(
                 requestId: $requestId,
                 provider: $provider,
@@ -63,19 +76,22 @@ class PostbackService
                 conversionResult: false,
                 reason: "Unauthorized IP address: {$sourceIp}",
                 responseCode: 403,
+                responsePayload: $response,
                 startTime: $startTime
             );
 
-            return [
-                'status' => 'error',
-                'message' => 'IP address not whitelisted.',
-                'code' => 403,
-            ];
+            return $response;
         }
 
-        // 2. Provider Authentication Check
+        // 3. Authentication Check
         $authPassed = $this->authenticateRequest($provider, $request);
         if (!$authPassed) {
+            $response = [
+                'status' => 'error',
+                'message' => 'Postback authentication verification failed.',
+                'code' => 401,
+            ];
+
             $this->logAttempt(
                 requestId: $requestId,
                 provider: $provider,
@@ -86,22 +102,25 @@ class PostbackService
                 conversionResult: false,
                 reason: 'Postback authentication verification failed.',
                 responseCode: 401,
+                responsePayload: $response,
                 startTime: $startTime
             );
 
-            return [
-                'status' => 'error',
-                'message' => 'Postback authentication failed.',
-                'code' => 401,
-            ];
+            return $response;
         }
 
-        // 3. Extract Parameters
+        // 4. Extract Parameters
         $clickId = $request->input('click_id') ?? $request->input('clickid') ?? $request->input('sub_id');
         $providerConversionId = $request->input('conversion_id') ?? $request->input('txid') ?? $request->input('transaction_id');
         $statusInput = strtolower($request->input('status', 'approved'));
 
         if (!$clickId) {
+            $response = [
+                'status' => 'error',
+                'message' => 'Missing click_id parameter.',
+                'code' => 400,
+            ];
+
             $this->logAttempt(
                 requestId: $requestId,
                 provider: $provider,
@@ -112,17 +131,14 @@ class PostbackService
                 conversionResult: false,
                 reason: 'Missing click_id parameter in postback payload.',
                 responseCode: 400,
+                responsePayload: $response,
                 startTime: $startTime
             );
 
-            return [
-                'status' => 'error',
-                'message' => 'Missing click_id parameter.',
-                'code' => 400,
-            ];
+            return $response;
         }
 
-        // 4. Ingest Conversion via ConversionService
+        // 5. Ingest Conversion via ConversionService
         try {
             $result = $this->conversionService->processConversion(
                 clickId: $clickId,
@@ -132,6 +148,14 @@ class PostbackService
                 requestIp: $sourceIp,
                 userAgent: $request->userAgent()
             );
+
+            $response = [
+                'status' => 'success',
+                'message' => $result['is_duplicate'] ? 'Duplicate conversion acknowledged (idempotent).' : 'Conversion recorded successfully.',
+                'conversion_id' => $result['conversion']->public_id,
+                'click_id' => $clickId,
+                'code' => 200,
+            ];
 
             $this->logAttempt(
                 requestId: $requestId,
@@ -143,17 +167,19 @@ class PostbackService
                 conversionResult: true,
                 reason: $result['is_duplicate'] ? 'Idempotent duplicate postback received.' : 'Conversion processed successfully.',
                 responseCode: 200,
+                responsePayload: $response,
                 startTime: $startTime
             );
 
-            return [
-                'status' => 'success',
-                'message' => $result['is_duplicate'] ? 'Duplicate conversion acknowledged (idempotent).' : 'Conversion recorded successfully.',
-                'conversion_id' => $result['conversion']->public_id,
-                'code' => 200,
-            ];
+            return $response;
 
         } catch (\Exception $e) {
+            $response = [
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'code' => 422,
+            ];
+
             $this->logAttempt(
                 requestId: $requestId,
                 provider: $provider,
@@ -164,36 +190,43 @@ class PostbackService
                 conversionResult: false,
                 reason: $e->getMessage(),
                 responseCode: 422,
+                responsePayload: $response,
                 startTime: $startTime
             );
 
-            return [
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'code' => 422,
-            ];
+            return $response;
         }
     }
 
-    protected function verifyIpWhitelist(PostbackProvider $provider, string $ip): bool
+    protected function verifyIpWhitelist(?PostbackProvider $provider, string $ip): bool
     {
         if (!config('postback.ip_whitelist_enabled', true)) {
             return true;
         }
 
-        $whitelists = $provider->ipWhitelists;
-        if ($whitelists->isEmpty()) {
-            // If no explicit whitelist configured for this provider, allow or check fallback
-            return true;
-        }
-
-        foreach ($whitelists as $item) {
-            if ($this->ipMatches($ip, $item->ip_address)) {
-                return true;
+        // If specific provider whitelist entries exist, check provider whitelist first
+        if ($provider && $provider->ipWhitelists->isNotEmpty()) {
+            foreach ($provider->ipWhitelists as $item) {
+                if ($this->ipMatches($ip, $item->ip_address)) {
+                    return true;
+                }
             }
+            return false;
         }
 
-        return false;
+        // Check global provider whitelists or general whitelists (postback_provider_id = null or global provider)
+        $globalWhitelists = \App\Models\PostbackIpWhitelist::whereNull('postback_provider_id')->get();
+        if ($globalWhitelists->isNotEmpty()) {
+            foreach ($globalWhitelists as $item) {
+                if ($this->ipMatches($ip, $item->ip_address)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // If no explicit whitelist entries configured anywhere, default to allow
+        return true;
     }
 
     protected function ipMatches(string $ip, string $allowedIp): bool
@@ -202,7 +235,6 @@ class PostbackService
             return true;
         }
 
-        // CIDR notation matching
         if (str_contains($allowedIp, '/')) {
             [$subnet, $mask] = explode('/', $allowedIp);
             if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && filter_var($subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
@@ -216,12 +248,27 @@ class PostbackService
         return false;
     }
 
-    protected function authenticateRequest(PostbackProvider $provider, Request $request): bool
+    protected function authenticateRequest(?PostbackProvider $provider, Request $request): bool
     {
+        $globalSecret = config('postback.global_secret');
+
+        $incomingSecret = $request->input('secret') ?? $request->header('X-Postback-Secret');
+
+        // Check global postback secret if configured
+        if (!empty($globalSecret)) {
+            if (hash_equals((string)$globalSecret, (string)$incomingSecret)) {
+                return true;
+            }
+        }
+
+        if (!$provider) {
+            // Global endpoint without global secret configured or matched
+            return empty($globalSecret);
+        }
+
         switch ($provider->auth_method) {
             case 'shared_secret':
-                $secret = $request->input('secret') ?? $request->header('X-Postback-Secret');
-                return !empty($provider->secret_key) && hash_equals($provider->secret_key, (string)$secret);
+                return !empty($provider->secret_key) && hash_equals($provider->secret_key, (string)$incomingSecret);
 
             case 'api_key':
                 $apiKey = $request->input('api_key') ?? $request->header('X-API-Key');
@@ -249,6 +296,7 @@ class PostbackService
         bool $conversionResult,
         string $reason,
         int $responseCode,
+        array $responsePayload,
         float $startTime
     ): PostbackLog {
         $processingTimeMs = (int) round((microtime(true) - $startTime) * 1000);
@@ -261,6 +309,7 @@ class PostbackService
             'http_method' => $request->method(),
             'headers' => $request->headers->all(),
             'payload' => $request->all(),
+            'response_payload' => $responsePayload,
             'auth_result' => $authResult,
             'ip_whitelist_result' => $ipResult,
             'click_validation_result' => $clickResult,

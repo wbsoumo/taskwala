@@ -54,7 +54,7 @@ class PostbackController extends Controller
     public function storeIpWhitelist(Request $request)
     {
         $validated = $request->validate([
-            'postback_provider_id' => ['required', 'exists:postback_providers,id'],
+            'postback_provider_id' => ['nullable', 'exists:postback_providers,id'],
             'ip_address' => ['required', 'string', 'max:45'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);

@@ -62,9 +62,18 @@
                             <label>Advertiser / Network Name <span class="text-danger">*</span></label>
                             <input type="text" name="advertiser_name" class="form-control" value="{{ old('advertiser_name', $campaign->advertiser_name) }}" required>
                         </div>
-                        <div class="col-md-6 form-group">
+                        <div class="col-md-3 form-group">
                             <label>Conversion Event <span class="text-danger">*</span></label>
                             <input type="text" name="conversion_event" class="form-control" value="{{ old('conversion_event', $campaign->conversion_event) }}" required>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label>Offer Postback Provider</label>
+                            <select name="postback_provider_id" class="form-control">
+                                <option value="">-- Global / System Default --</option>
+                                @foreach($providers as $p)
+                                    <option value="{{ $p->id }}" {{ old('postback_provider_id', $campaign->postback_provider_id) == $p->id ? 'selected' : '' }}>{{ $p->name }} ({{ $p->slug }})</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
 

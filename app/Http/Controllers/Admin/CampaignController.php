@@ -43,7 +43,8 @@ class CampaignController extends Controller
 
     public function create()
     {
-        return view('admin.campaigns.create');
+        $providers = \App\Models\PostbackProvider::where('status', 'active')->get();
+        return view('admin.campaigns.create', compact('providers'));
     }
 
     public function store(Request $request)
@@ -70,6 +71,7 @@ class CampaignController extends Controller
             'terms' => ['nullable', 'string'],
             'kpi_requirements' => ['nullable', 'string'],
             'duplicate_conversion_rules' => ['nullable', 'string'],
+            'postback_provider_id' => ['nullable', 'exists:postback_providers,id'],
         ]);
 
         // Handle File Upload if provided
@@ -99,7 +101,8 @@ class CampaignController extends Controller
 
     public function edit(Campaign $campaign)
     {
-        return view('admin.campaigns.edit', compact('campaign'));
+        $providers = \App\Models\PostbackProvider::where('status', 'active')->get();
+        return view('admin.campaigns.edit', compact('campaign', 'providers'));
     }
 
     public function update(Request $request, Campaign $campaign)
@@ -126,6 +129,7 @@ class CampaignController extends Controller
             'terms' => ['nullable', 'string'],
             'kpi_requirements' => ['nullable', 'string'],
             'duplicate_conversion_rules' => ['nullable', 'string'],
+            'postback_provider_id' => ['nullable', 'exists:postback_providers,id'],
         ]);
 
         // Handle File Upload if provided

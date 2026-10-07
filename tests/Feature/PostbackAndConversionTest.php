@@ -128,4 +128,71 @@ class PostbackAndConversionTest extends TestCase
         $this->assertEquals(1, \App\Models\WalletTransaction::where('user_id', $user->id)->count());
         $this->assertEquals(40.00, (float) $user->wallet->fresh()->balance);
     }
+
+    public function test_global_postback_endpoint_and_response_logging()
+    {
+        $user = User::create([
+            'name' => 'Affiliate Global',
+            'email' => 'global@test.com',
+            'password' => Hash::make('password123'),
+            'status' => 'active',
+        ]);
+
+        $campaign = Campaign::create([
+            'name' => 'Global Offer Campaign',
+            'slug' => 'global-offer-campaign',
+            'advertiser_name' => 'Global Advertiser',
+            'category' => 'Fintech',
+            'landing_url' => 'https://example.com?click_id={click_id}',
+            'conversion_event' => 'lead',
+            'advertiser_payout' => 200.00,
+            'default_affiliate_payout' => 150.00,
+            'currency' => 'INR',
+            'status' => 'active',
+        ]);
+
+        $link = AffiliateLink::create([
+            'secure_token' => 'global_token_123',
+            'campaign_id' => $campaign->id,
+            'user_id' => $user->id,
+            'allocated_affiliate_payout' => 150.00,
+            'customer_payout' => 100.00,
+            'affiliate_commission' => 50.00,
+            'status' => 'active',
+        ]);
+
+        $click = Click::create([
+            'click_id' => 'CLK_GLOBAL_TEST',
+            'link_id' => $link->id,
+            'campaign_id' => $campaign->id,
+            'user_id' => $user->id,
+            'allocated_affiliate_payout' => 150.00,
+            'customer_payout' => 100.00,
+            'affiliate_commission' => 50.00,
+            'ip_address' => '127.0.0.1',
+            'status' => 'tracked',
+            'created_at' => now(),
+        ]);
+
+        // Global postback hit
+        $response = $this->call(
+            method: 'POST',
+            uri: route('api.postback.handle', ['provider_slug' => 'global']),
+            parameters: ['secret' => config('postback.global_secret', 'taskwala_postback_secret_key_2026'), 'click_id' => 'CLK_GLOBAL_TEST', 'conversion_id' => 'TX_GLOB_99', 'status' => 'approved'],
+            server: ['REMOTE_ADDR' => '127.0.0.1']
+        );
+
+        $response->assertStatus(200);
+
+        $this->assertDatabaseHas('postback_logs', [
+            'source_ip' => '127.0.0.1',
+            'response_code' => 200,
+            'conversion_result' => true,
+        ]);
+
+        $log = \App\Models\PostbackLog::where('source_ip', '127.0.0.1')->latest('id')->first();
+        $this->assertNotNull($log->response_payload);
+        $this->assertEquals('success', $log->response_payload['status']);
+        $this->assertEquals('CLK_GLOBAL_TEST', $log->response_payload['click_id']);
+    }
 }

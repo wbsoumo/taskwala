@@ -50,7 +50,7 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4 form-group">
+                        <div class="col-md-3 form-group">
                             <label>Public Offer Page Theme <span class="text-danger">*</span></label>
                             <select name="theme" class="form-control" required>
                                 <option value="gradient_blue" {{ old('theme', 'gradient_blue') === 'gradient_blue' ? 'selected' : '' }}>Vibrant Gradient Blue (Default)</option>
@@ -59,11 +59,20 @@
                                 <option value="clean_minimal" {{ old('theme') === 'clean_minimal' ? 'selected' : '' }}>Clean Light Minimalist</option>
                             </select>
                         </div>
-                        <div class="col-md-4 form-group">
+                        <div class="col-md-3 form-group">
+                            <label>Offer Postback Provider</label>
+                            <select name="postback_provider_id" class="form-control">
+                                <option value="">-- Global / System Default --</option>
+                                @foreach($providers as $p)
+                                    <option value="{{ $p->id }}" {{ old('postback_provider_id') == $p->id ? 'selected' : '' }}>{{ $p->name }} ({{ $p->slug }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3 form-group">
                             <label>Advertiser / Network Name <span class="text-danger">*</span></label>
                             <input type="text" name="advertiser_name" class="form-control" value="{{ old('advertiser_name') }}" placeholder="e.g. Network A" required>
                         </div>
-                        <div class="col-md-4 form-group">
+                        <div class="col-md-3 form-group">
                             <label>Conversion Event <span class="text-danger">*</span></label>
                             <input type="text" name="conversion_event" class="form-control" value="{{ old('conversion_event', 'account_opening') }}" placeholder="e.g. account_opening, lead_submit" required>
                         </div>

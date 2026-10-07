@@ -32,6 +32,7 @@ class Campaign extends Model
         'terms',
         'kpi_requirements',
         'duplicate_conversion_rules',
+        'postback_provider_id',
         'created_by',
         'updated_by',
     ];
@@ -71,6 +72,11 @@ class Campaign extends Model
     public function updater()
     {
         return $this->belongsTo(Admin::class, 'updated_by');
+    }
+
+    public function postbackProvider()
+    {
+        return $this->belongsTo(PostbackProvider::class, 'postback_provider_id');
     }
 
     public function affiliateAllocations()
