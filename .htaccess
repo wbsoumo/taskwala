@@ -1,14 +1,13 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    
-    # Block access to .env file
+
+    # Prevent direct HTTP access to sensitive files
     RewriteRule ^\.env - [F,L,NC]
     RewriteRule ^\.env\..* - [F,L,NC]
-    
-    # Block access to private storage
-    RewriteRule ^storage/app/private/.* - [F,L,NC]
-    
-    # Redirect all traffic to /public
+    RewriteRule ^storage/logs/.* - [F,L,NC]
+    RewriteRule ^storage/framework/.* - [F,L,NC]
+
+    # If the request is not already for the /public folder, rewrite to /public
     RewriteCond %{REQUEST_URI} !^/public/
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
