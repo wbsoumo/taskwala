@@ -58,7 +58,7 @@
             <div class="card-body">
                 <p class="text-muted small mb-3">Set custom maximum Level 2 affiliate payout for specific users. (e.g. Affiliate A gets ₹100, Affiliate B gets ₹80).</p>
 
-                <form action="{{ route('admin.campaigns.allocations.update', $campaign) }}" method="POST" class="mb-4 bg-light p-3 rounded border">
+                <form action="{{ route('admin.campaigns.allocations.store', $campaign) }}" method="POST" class="mb-4 bg-light p-3 rounded border">
                     @csrf
                     <div class="form-group">
                         <label>Select Affiliate User</label>

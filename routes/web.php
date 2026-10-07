@@ -46,7 +46,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // Campaigns Management
         Route::resource('campaigns', AdminCampaignController::class);
-        Route::post('campaigns/{campaign}/allocations', [CampaignAllocationController::class, 'update'])->name('campaigns.allocations.update');
+        Route::post('campaigns/{campaign}/allocations', [CampaignAllocationController::class, 'update'])->name('campaigns.allocations.store');
 
         // Tracking & Conversions
         Route::get('/tracking/links', [AdminTrackingController::class, 'links'])->name('tracking.links');
