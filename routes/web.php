@@ -79,6 +79,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/finance/customer-payouts', [AdminFinanceController::class, 'customerPayouts'])->name('finance.customer_payouts');
 
         // Reports
+        Route::get('/reports/performance', [AdminReportController::class, 'performance'])->name('reports.performance');
+        Route::get('/reports/performance/export', [AdminReportController::class, 'exportPerformanceCsv'])->name('reports.performance.export');
         Route::get('/reports/campaigns', [AdminReportController::class, 'campaigns'])->name('reports.campaigns');
         Route::get('/reports/campaigns/export', [AdminReportController::class, 'exportCampaignsCsv'])->name('reports.campaigns.export');
         Route::get('/reports/affiliates', [AdminReportController::class, 'affiliates'])->name('reports.affiliates');

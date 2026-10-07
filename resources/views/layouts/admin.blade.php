@@ -169,6 +169,12 @@
                     <li class="nav-header">REPORTS & SECURITY</li>
 
                     <li class="nav-item">
+                        <a href="{{ route('admin.reports.performance') }}" class="nav-link {{ request()->routeIs('admin.reports.performance') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-chart-line text-success"></i>
+                            <p>Performance Report</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="{{ route('admin.reports.campaigns') }}" class="nav-link {{ request()->routeIs('admin.reports.campaigns') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-chart-pie"></i>
                             <p>Campaign Reports</p>

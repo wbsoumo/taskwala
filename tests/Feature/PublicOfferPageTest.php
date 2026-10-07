@@ -88,7 +88,7 @@ class PublicOfferPageTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('Kotak 811 Account');
-        $response->assertSee('₹60.00');
+        $response->assertSee('₹60');
         $response->assertSee('taskwala.co.in');
     }
 

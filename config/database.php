@@ -33,16 +33,15 @@ return [
     'connections' => [
 
         'sqlite' => [
-            'driver' => 'mysql',
+            'driver' => 'sqlite',
             'url' => env('DB_URL'),
-            'host' => env('DB_HOST', 'localhost'),
-            'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', 'ehcubedv_taskwala'),
-            'username' => env('DB_USERNAME', 'ehcubedv_taskuser'),
-            'password' => env('DB_PASSWORD', 'Soumojit1234@'),
-            'charset' => 'utf8mb4',
-            'collation' => 'utf8mb4_unicode_ci',
+            'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
+            'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
+            'busy_timeout' => null,
+            'journal_mode' => null,
+            'synchronous' => null,
+            'transaction_mode' => 'DEFERRED',
         ],
 
         'mysql' => [
