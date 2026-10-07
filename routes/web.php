@@ -27,6 +27,15 @@ use Illuminate\Support\Facades\Route;
 Route::get('/go/{token}', [RedirectController::class, 'redirect'])->name('tracking.redirect');
 Route::post('/go/{token}/submit', [RedirectController::class, 'submitTask'])->name('tracking.submit');
 
+// Fallback media asset handler for cPanel shared hosting
+Route::get('/storage/campaigns/{filename}', function ($filename) {
+    $path = storage_path('app/public/campaigns/' . $filename);
+    if (!file_exists($path)) {
+        abort(404);
+    }
+    return response()->file($path);
+});
+
 // 2. ROOT ROUTE REDIRECT
 Route::get('/', function () {
     return redirect()->route('user.login');
