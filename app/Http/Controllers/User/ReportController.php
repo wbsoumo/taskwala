@@ -57,6 +57,13 @@ class ReportController extends Controller
             $query->where('campaign_id', $request->campaign_id);
         }
 
+        if ($request->filled('upi_search')) {
+            $upiSearch = trim($request->upi_search);
+            $query->whereHas('customerPayout', function ($q) use ($upiSearch) {
+                $q->where('upi_id', 'like', "%{$upiSearch}%");
+            });
+        }
+
         if ($request->filled('start_date')) {
             $query->whereDate('conversion_time', '>=', $request->start_date);
         }
@@ -89,6 +96,13 @@ class ReportController extends Controller
 
         if ($request->filled('campaign_id')) {
             $query->where('campaign_id', $request->campaign_id);
+        }
+
+        if ($request->filled('upi_search')) {
+            $upiSearch = trim($request->upi_search);
+            $query->whereHas('customerPayout', function ($q) use ($upiSearch) {
+                $q->where('upi_id', 'like', "%{$upiSearch}%");
+            });
         }
 
         if ($request->filled('start_date')) {
