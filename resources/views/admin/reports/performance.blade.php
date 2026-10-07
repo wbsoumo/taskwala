@@ -126,7 +126,7 @@
                     @php
                         $conv = $rec->conversion;
                         $snap = $conv?->payoutSnapshot;
-                        $upi = $conv?->customerPayout?->upi_id ?? 'N/A';
+                        $upi = $rec->customerPayout?->upi_id ?? $conv?->customerPayout?->upi_id ?? 'N/A';
                     @endphp
                     <tr>
                         <td class="small">{{ $rec->created_at ? $rec->created_at->format('M d, Y H:i:s') : 'N/A' }}</td>

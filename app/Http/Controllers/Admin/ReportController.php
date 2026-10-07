@@ -14,13 +14,14 @@ class ReportController extends Controller
 {
     public function performance(Request $request)
     {
-        $query = Click::with(['campaign', 'user', 'link', 'conversion.payoutSnapshot', 'conversion.provider', 'conversion.customerPayout']);
+        $query = Click::with(['campaign', 'user', 'link', 'customerPayout', 'conversion.payoutSnapshot', 'conversion.provider', 'conversion.customerPayout']);
 
         // Search Filter (Search across click_id, conversion_id, UPI ID, affiliate name, campaign name)
         if ($request->filled('search')) {
             $search = trim($request->search);
             $query->where(function ($q) use ($search) {
                 $q->where('click_id', 'like', "%{$search}%")
+                  ->orWhereHas('customerPayout', fn($cp) => $cp->where('upi_id', 'like', "%{$search}%"))
                   ->orWhereHas('campaign', fn($c) => $c->where('name', 'like', "%{$search}%")->orWhere('advertiser_name', 'like', "%{$search}%"))
                   ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
                   ->orWhereHas('conversion', function ($conv) use ($search) {
@@ -83,12 +84,13 @@ class ReportController extends Controller
             'Content-Disposition' => 'attachment; filename="performance_report_' . date('Y-m-d_H-i') . '.csv"',
         ];
 
-        $query = Click::with(['campaign', 'user', 'link', 'conversion.payoutSnapshot', 'conversion.provider', 'conversion.customerPayout']);
+        $query = Click::with(['campaign', 'user', 'link', 'customerPayout', 'conversion.payoutSnapshot', 'conversion.provider', 'conversion.customerPayout']);
 
         if ($request->filled('search')) {
             $search = trim($request->search);
             $query->where(function ($q) use ($search) {
                 $q->where('click_id', 'like', "%{$search}%")
+                  ->orWhereHas('customerPayout', fn($cp) => $cp->where('upi_id', 'like', "%{$search}%"))
                   ->orWhereHas('campaign', fn($c) => $c->where('name', 'like', "%{$search}%"))
                   ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%"))
                   ->orWhereHas('conversion', fn($conv) => $conv->whereHas('customerPayout', fn($cp) => $cp->where('upi_id', 'like', "%{$search}%")));
@@ -126,7 +128,7 @@ class ReportController extends Controller
             foreach ($records as $row) {
                 $conv = $row->conversion;
                 $snap = $conv?->payoutSnapshot;
-                $upi = $conv?->customerPayout?->upi_id ?? 'N/A';
+                $upi = $row->customerPayout?->upi_id ?? $conv?->customerPayout?->upi_id ?? 'N/A';
 
                 fputcsv($file, [
                     $row->click_id,

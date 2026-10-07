@@ -58,4 +58,9 @@ class Click extends Model
     {
         return $this->hasOne(Conversion::class, 'click_id', 'click_id');
     }
+
+    public function customerPayout()
+    {
+        return $this->hasOne(CustomerPayout::class, 'click_id', 'click_id');
+    }
 }
