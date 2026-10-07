@@ -63,6 +63,10 @@ class WalletController extends Controller
                 return redirect()->back()->withErrors(['amount' => 'Insufficient wallet balance for this payout request.']);
             }
 
+            if (!Schema::hasTable('payout_requests')) {
+                return redirect()->back()->with('error', 'The payout_requests database table does not exist yet on server. Please run "php artisan migrate --force" in cPanel terminal.');
+            }
+
             // Deduct available balance and create payout request
             $wallet->balance -= $requestedAmount;
             $wallet->save();
