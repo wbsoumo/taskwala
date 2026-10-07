@@ -11,6 +11,8 @@ class CustomerPayout extends Model
 
     protected $fillable = [
         'conversion_id',
+        'link_id',
+        'click_id',
         'customer_name',
         'upi_id',
         'upi_holder_name',
@@ -29,5 +31,10 @@ class CustomerPayout extends Model
     public function conversion()
     {
         return $this->belongsTo(Conversion::class);
+    }
+
+    public function link()
+    {
+        return $this->belongsTo(AffiliateLink::class, 'link_id');
     }
 }

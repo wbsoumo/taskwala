@@ -23,8 +23,9 @@ use App\Http\Controllers\User\ReportController as UserReportController;
 use App\Http\Controllers\User\WalletController as UserWalletController;
 use Illuminate\Support\Facades\Route;
 
-// 1. PUBLIC TRACKING ROUTE
+// 1. PUBLIC TRACKING & OFFER PAGE ROUTES
 Route::get('/go/{token}', [RedirectController::class, 'redirect'])->name('tracking.redirect');
+Route::post('/go/{token}/submit', [RedirectController::class, 'submitTask'])->name('tracking.submit');
 
 // 2. ROOT ROUTE REDIRECT
 Route::get('/', function () {

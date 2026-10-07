@@ -36,6 +36,22 @@
 
                     <div class="row">
                         <div class="col-md-6 form-group">
+                            <label>Campaign Logo / Icon Image URL</label>
+                            <input type="text" name="logo_url" class="form-control" value="{{ old('logo_url', $campaign->logo_url) }}" placeholder="https://domain.com/logo.png">
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Public Offer Page Theme <span class="text-danger">*</span></label>
+                            <select name="theme" class="form-control" required>
+                                <option value="gradient_blue" {{ old('theme', $campaign->theme) === 'gradient_blue' ? 'selected' : '' }}>Vibrant Gradient Blue (Default)</option>
+                                <option value="dark_glass" {{ old('theme', $campaign->theme) === 'dark_glass' ? 'selected' : '' }}>Sleek Dark Glassmorphism</option>
+                                <option value="emerald" {{ old('theme', $campaign->theme) === 'emerald' ? 'selected' : '' }}>Emerald Fintech Green</option>
+                                <option value="clean_minimal" {{ old('theme', $campaign->theme) === 'clean_minimal' ? 'selected' : '' }}>Clean Light Minimalist</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 form-group">
                             <label>Advertiser / Network Name <span class="text-danger">*</span></label>
                             <input type="text" name="advertiser_name" class="form-control" value="{{ old('advertiser_name', $campaign->advertiser_name) }}" required>
                         </div>

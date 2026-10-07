@@ -16,6 +16,8 @@ class Campaign extends Model
         'slug',
         'description',
         'short_description',
+        'logo_url',
+        'theme',
         'advertiser_name',
         'category',
         'campaign_type',
@@ -54,6 +56,9 @@ class Campaign extends Model
             }
             if (empty($campaign->slug)) {
                 $campaign->slug = Str::slug($campaign->name);
+            }
+            if (empty($campaign->theme)) {
+                $campaign->theme = 'gradient_blue';
             }
         });
     }
