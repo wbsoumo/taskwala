@@ -1,0 +1,14 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Block access to .env file
+    RewriteRule ^\.env - [F,L,NC]
+    RewriteRule ^\.env\..* - [F,L,NC]
+    
+    # Block access to private storage
+    RewriteRule ^storage/app/private/.* - [F,L,NC]
+    
+    # Redirect all traffic to /public
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
