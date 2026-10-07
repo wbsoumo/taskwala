@@ -239,31 +239,49 @@
             outline: none;
         }
 
-        /* Handle Chips */
-        .upi-chip {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: #cbd5e1;
-            font-size: 0.8rem;
-            font-weight: 700;
-            padding: 6px 13px;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin: 3px;
-            user-select: none;
+        /* UPI Autocomplete Dropdown */
+        .upi-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            margin-top: 6px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            backdrop-filter: blur(16px);
+            z-index: 100;
+            overflow: hidden;
+            display: none;
         }
-        .theme-clean_minimal .upi-chip {
-            background: #e2e8f0;
+        .theme-clean_minimal .upi-dropdown {
+            background: #ffffff;
             border-color: #cbd5e1;
-            color: #334155;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
         }
-        .upi-chip:hover, .upi-chip:active {
+        .upi-dropdown-item {
+            padding: 12px 18px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.15s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .theme-clean_minimal .upi-dropdown-item {
+            color: #334155;
+            border-bottom-color: #f1f5f9;
+        }
+        .upi-dropdown-item:last-child {
+            border-bottom: none;
+        }
+        .upi-dropdown-item:hover, .upi-dropdown-item.active {
             background: #10b981;
             color: #ffffff;
-            border-color: #10b981;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 14px rgba(16, 185, 129, 0.3);
         }
 
         /* Action Button */
@@ -346,29 +364,16 @@
     <form action="{{ route('tracking.submit', $link->secure_token) }}" method="POST" id="taskForm">
         @csrf
 
-        <div class="form-group text-left mb-3">
+        <div class="form-group text-left mb-4">
             <label class="font-weight-bold small text-uppercase mb-2 opacity-90 d-flex align-items-center justify-content-between">
                 <span><i class="fas fa-wallet text-success mr-1"></i> Enter Your UPI ID</span>
                 <span class="badge badge-success px-2 py-1" style="font-size: 0.65rem;">Direct Payout</span>
             </label>
             <div class="upi-input-wrap">
-                <input type="text" name="upi_id" id="upiInput" class="form-control upi-field text-lowercase" placeholder="username@ybl" value="{{ old('upi_id') }}" required autocomplete="off">
+                <input type="text" name="upi_id" id="upiInput" class="form-control upi-field text-lowercase" placeholder="mobile@ybl" value="{{ old('upi_id') }}" required autocomplete="off">
+                <div id="upiDropdown" class="upi-dropdown"></div>
             </div>
-            <div id="upiFeedback" class="invalid-feedback d-none small mt-1 text-danger">Please enter a valid UPI ID (e.g. name@ybl).</div>
-        </div>
-
-        <!-- Quick Select Handles -->
-        <div class="mb-4 text-left">
-            <span class="small font-weight-bold opacity-75 d-block mb-1" style="font-size: 0.75rem;">Quick Select Handle:</span>
-            <div class="d-flex flex-wrap">
-                <span class="upi-chip" onclick="appendHandle('@ybl')">@ybl</span>
-                <span class="upi-chip" onclick="appendHandle('@sbi')">@sbi</span>
-                <span class="upi-chip" onclick="appendHandle('@okaxis')">@okaxis</span>
-                <span class="upi-chip" onclick="appendHandle('@paytm')">@paytm</span>
-                <span class="upi-chip" onclick="appendHandle('@icici')">@icici</span>
-                <span class="upi-chip" onclick="appendHandle('@ibl')">@ibl</span>
-                <span class="upi-chip" onclick="appendHandle('@axl')">@axl</span>
-            </div>
+            <div id="upiFeedback" class="invalid-feedback d-none small mt-1 text-danger">Please enter a valid UPI ID (e.g. 9876543210@ybl).</div>
         </div>
 
         <!-- Submit Button -->
@@ -387,27 +392,66 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    function appendHandle(handle) {
-        let input = $('#upiInput').val().trim();
-        if (input.includes('@')) {
-            input = input.split('@')[0];
+    const upiHandles = ['@ybl', '@sbi', '@okaxis', '@paytm', '@icici', '@ibl', '@axl', '@okicici', '@postbank'];
+
+    function renderDropdown(username, handleSearch) {
+        const dropdown = $('#upiDropdown');
+        dropdown.empty();
+
+        const filtered = upiHandles.filter(h => h.startsWith(handleSearch));
+
+        if (filtered.length === 0 || username.trim() === '') {
+            dropdown.hide();
+            return;
         }
-        if (input.length > 0) {
-            $('#upiInput').val(input + handle).focus();
+
+        filtered.forEach(handle => {
+            const item = $(`
+                <div class="upi-dropdown-item">
+                    <span><strong>${username}</strong><span style="color:#10b981;">${handle}</span></span>
+                    <span class="small opacity-75"><i class="fas fa-check-circle"></i></span>
+                </div>
+            `);
+            item.on('click', function() {
+                $('#upiInput').val(username + handle).focus();
+                dropdown.hide();
+                validateUpi();
+            });
+            dropdown.append(item);
+        });
+
+        dropdown.show();
+    }
+
+    function validateUpi() {
+        const val = $('#upiInput').val().trim();
+        const regex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
+        if (val.length > 0 && !regex.test(val)) {
+            $('#upiInput').addClass('is-invalid');
+            $('#upiFeedback').removeClass('d-none').show();
         } else {
-            $('#upiInput').val('mobile' + handle).focus().select();
+            $('#upiInput').removeClass('is-invalid');
+            $('#upiFeedback').addClass('d-none').hide();
         }
     }
 
     $('#upiInput').on('input', function() {
         const val = $(this).val().trim();
-        const regex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
-        if (val.length > 0 && !regex.test(val)) {
-            $(this).addClass('is-invalid');
-            $('#upiFeedback').removeClass('d-none').show();
+        validateUpi();
+
+        if (val.includes('@')) {
+            const parts = val.split('@');
+            const username = parts[0];
+            const handleSearch = '@' + parts[1];
+            renderDropdown(username, handleSearch);
         } else {
-            $(this).removeClass('is-invalid');
-            $('#upiFeedback').addClass('d-none').hide();
+            $('#upiDropdown').hide();
+        }
+    });
+
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.upi-input-wrap').length) {
+            $('#upiDropdown').hide();
         }
     });
 </script>
