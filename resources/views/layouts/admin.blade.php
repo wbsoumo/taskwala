@@ -180,6 +180,12 @@
                     <li class="nav-header">FINANCIAL LEDGER</li>
 
                     <li class="nav-item">
+                        <a href="{{ route('admin.finance.affiliate_payouts') }}" class="nav-link {{ request()->routeIs('admin.finance.affiliate_payouts*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-money-check-alt text-success"></i>
+                            <p>Affiliate Payout Requests</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="{{ route('admin.finance.ledger') }}" class="nav-link {{ request()->routeIs('admin.finance.ledger') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-wallet"></i>
                             <p>Wallet Ledger</p>

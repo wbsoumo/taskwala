@@ -79,6 +79,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/postbacks/logs', [AdminPostbackController::class, 'logs'])->name('postbacks.logs');
 
         // Finance
+        Route::get('/finance/affiliate-payouts', [AdminFinanceController::class, 'affiliatePayouts'])->name('finance.affiliate_payouts');
+        Route::post('/finance/affiliate-payouts/{id}/process', [AdminFinanceController::class, 'processAffiliatePayout'])->name('finance.affiliate_payouts.process');
         Route::get('/finance/wallet-ledger', [AdminFinanceController::class, 'ledger'])->name('finance.ledger');
         Route::get('/finance/customer-payouts', [AdminFinanceController::class, 'customerPayouts'])->name('finance.customer_payouts');
 
@@ -128,6 +130,7 @@ Route::middleware(['web'])->group(function () {
 
         // Wallet & UPI & Profile
         Route::get('/wallet', [UserWalletController::class, 'index'])->name('user.wallet.index');
+        Route::post('/wallet/request-payout', [UserWalletController::class, 'requestPayout'])->name('user.wallet.request_payout');
         Route::get('/upi', [\App\Http\Controllers\User\UpiController::class, 'index'])->name('user.upi.index');
         Route::post('/upi', [\App\Http\Controllers\User\UpiController::class, 'update'])->name('user.upi.update');
         Route::get('/profile', [ProfileController::class, 'index'])->name('user.profile.index');
