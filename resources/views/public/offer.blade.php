@@ -284,6 +284,90 @@
             color: #ffffff;
         }
 
+        /* Redirect Overlay Modal */
+        .redirect-modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(11, 15, 23, 0.95);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+        .redirect-modal-backdrop.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .redirect-modal-content {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 28px;
+            padding: 40px 32px;
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8), 0 0 50px rgba(16, 185, 129, 0.2);
+            animation: modalScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes modalScale {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .redirect-flow-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .brand-node {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #3b82f6;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .flow-arrow {
+            color: #10b981;
+            font-size: 1.25rem;
+            animation: pulseArrow 1s infinite alternate;
+        }
+        @keyframes pulseArrow {
+            from { transform: translateX(-4px); opacity: 0.6; }
+            to { transform: translateX(4px); opacity: 1; }
+        }
+
+        .progress-bar-wrap {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0 10px;
+        }
+        .progress-bar-inner {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981 0%, #3b82f6 100%);
+            transition: width 0.1s linear;
+        }
+
         /* Action Button */
         .btn-complete {
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
@@ -390,6 +474,43 @@
 
 </div>
 
+<!-- Interactive Redirect Overlay Modal -->
+<div id="redirectModal" class="redirect-modal-backdrop">
+    <div class="redirect-modal-content">
+        <div class="redirect-flow-header">
+            <div class="brand-node">
+                <i class="fas fa-shield-alt text-primary"></i>
+            </div>
+            <div class="flow-arrow">
+                <i class="fas fa-chevron-right"></i><i class="fas fa-chevron-right"></i>
+            </div>
+            <div class="brand-node">
+                @if(!empty($campaign->logo_url))
+                    <img src="{{ $campaign->logo_url }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
+                @else
+                    <i class="fas fa-bolt text-warning"></i>
+                @endif
+            </div>
+        </div>
+
+        <h4 class="font-weight-extrabold mb-1" style="color: #ffffff;">Taskwala &rarr; {{ $campaign->name }}</h4>
+        <p class="text-success font-weight-bold mb-3" style="font-size: 0.95rem;">
+            <i class="fas fa-check-circle mr-1"></i> UPI Registered: <span id="confirmedUpi"></span>
+        </p>
+
+        <p class="small opacity-75 mb-1" style="color: #cbd5e1;">Redirecting to official offer page...</p>
+
+        <div class="progress-bar-wrap">
+            <div id="progressBarInner" class="progress-bar-inner"></div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between small opacity-60 text-white mt-2">
+            <span>Securing payout trace</span>
+            <span id="timerText">3s</span>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     const upiHandles = ['@ybl', '@sbi', '@okaxis', '@paytm', '@icici', '@ibl', '@axl', '@okicici', '@postbank'];
@@ -429,9 +550,11 @@
         if (val.length > 0 && !regex.test(val)) {
             $('#upiInput').addClass('is-invalid');
             $('#upiFeedback').removeClass('d-none').show();
+            return false;
         } else {
             $('#upiInput').removeClass('is-invalid');
             $('#upiFeedback').addClass('d-none').hide();
+            return true;
         }
     }
 
@@ -453,6 +576,39 @@
         if (!$(e.target).closest('.upi-input-wrap').length) {
             $('#upiDropdown').hide();
         }
+    });
+
+    // Handle Form Submit with 3-second Redirect Illusion Modal
+    $('#taskForm').on('submit', function(e) {
+        e.preventDefault();
+        const upiVal = $('#upiInput').val().trim();
+        const isValid = validateUpi();
+
+        if (!isValid || upiVal === '') {
+            return;
+        }
+
+        $('#confirmedUpi').text(upiVal);
+        $('#redirectModal').addClass('show');
+
+        let duration = 3000; // 3 seconds
+        let elapsed = 0;
+        let intervalTime = 50;
+
+        const timer = setInterval(function() {
+            elapsed += intervalTime;
+            let percent = Math.min((elapsed / duration) * 100, 100);
+            $('#progressBarInner').css('width', percent + '%');
+            
+            let secondsLeft = Math.ceil((duration - elapsed) / 1000);
+            if (secondsLeft < 1) secondsLeft = 1;
+            $('#timerText').text(secondsLeft + 's');
+
+            if (elapsed >= duration) {
+                clearInterval(timer);
+                e.target.submit(); // Submit form after 3-second delay
+            }
+        }, intervalTime);
     });
 </script>
 </body>
