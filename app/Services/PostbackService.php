@@ -83,33 +83,7 @@ class PostbackService
             return $response;
         }
 
-        // 3. Authentication Check
-        $authPassed = $this->authenticateRequest($provider, $request);
-        if (!$authPassed) {
-            $response = [
-                'status' => 'error',
-                'message' => 'Postback authentication verification failed.',
-                'code' => 401,
-            ];
-
-            $this->logAttempt(
-                requestId: $requestId,
-                provider: $provider,
-                request: $request,
-                authResult: false,
-                ipResult: true,
-                clickResult: false,
-                conversionResult: false,
-                reason: 'Postback authentication verification failed.',
-                responseCode: 401,
-                responsePayload: $response,
-                startTime: $startTime
-            );
-
-            return $response;
-        }
-
-        // 4. Extract Parameters
+        // 3. Extract Parameters
         $clickId = $request->input('click_id') ?? $request->input('clickid') ?? $request->input('sub_id');
         $providerConversionId = $request->input('conversion_id') ?? $request->input('txid') ?? $request->input('transaction_id');
         $statusInput = strtolower($request->input('status', 'approved'));
@@ -125,12 +99,64 @@ class PostbackService
                 requestId: $requestId,
                 provider: $provider,
                 request: $request,
-                authResult: true,
+                authResult: false,
                 ipResult: true,
                 clickResult: false,
                 conversionResult: false,
-                reason: 'Missing click_id parameter in postback payload.',
+                reason: 'Missing click_id parameter in postback URL.',
                 responseCode: 400,
+                responsePayload: $response,
+                startTime: $startTime
+            );
+
+            return $response;
+        }
+
+        // Resolve Click & Associated Campaign to check Offer-Wise Secret Key
+        $click = \App\Models\Click::with('campaign')->where('click_id', $clickId)->first();
+        if (!$click) {
+            $response = [
+                'status' => 'error',
+                'message' => "Invalid or unrecorded Click ID: {$clickId}",
+                'code' => 404,
+            ];
+
+            $this->logAttempt(
+                requestId: $requestId,
+                provider: $provider,
+                request: $request,
+                authResult: false,
+                ipResult: true,
+                clickResult: false,
+                conversionResult: false,
+                reason: "Click ID not found: {$clickId}",
+                responseCode: 404,
+                responsePayload: $response,
+                startTime: $startTime
+            );
+
+            return $response;
+        }
+
+        // 4. Authentication Check (Offer-Wise Secret Key OR Provider Auth)
+        $authPassed = $this->authenticateRequest($provider, $click->campaign, $request);
+        if (!$authPassed) {
+            $response = [
+                'status' => 'error',
+                'message' => 'Postback secret key authentication failed.',
+                'code' => 401,
+            ];
+
+            $this->logAttempt(
+                requestId: $requestId,
+                provider: $provider,
+                request: $request,
+                authResult: false,
+                ipResult: true,
+                clickResult: true,
+                conversionResult: false,
+                reason: 'Offer/Provider secret key authentication failed.',
+                responseCode: 401,
                 responsePayload: $response,
                 startTime: $startTime
             );
@@ -248,31 +274,41 @@ class PostbackService
         return false;
     }
 
-    protected function authenticateRequest(?PostbackProvider $provider, Request $request): bool
+    protected function authenticateRequest(?PostbackProvider $provider, ?\App\Models\Campaign $campaign, Request $request): bool
     {
+        $incomingSecret = $request->input('secret') ?? $request->header('X-Postback-Secret') ?? $request->input('secret_key');
+
+        // 1. Check Offer-Wise Secret Key if campaign exists and has a secret key set
+        if ($campaign && !empty($campaign->postback_secret_key)) {
+            if (!empty($incomingSecret) && hash_equals((string)$campaign->postback_secret_key, (string)$incomingSecret)) {
+                return true;
+            }
+        }
+
+        // 2. Check Global Secret Key if configured
         $globalSecret = config('postback.global_secret');
-
-        $incomingSecret = $request->input('secret') ?? $request->header('X-Postback-Secret');
-
-        // Check global postback secret if configured
-        if (!empty($globalSecret)) {
+        if (!empty($globalSecret) && !empty($incomingSecret)) {
             if (hash_equals((string)$globalSecret, (string)$incomingSecret)) {
                 return true;
             }
         }
 
+        // 3. Check Provider Authentication
         if (!$provider) {
-            // Global endpoint without global secret configured or matched
+            // If offer has no secret key set and no global secret, allow or require secret
+            if ($campaign && !empty($campaign->postback_secret_key)) {
+                return false; // Secret was required for this offer but failed above
+            }
             return empty($globalSecret);
         }
 
         switch ($provider->auth_method) {
             case 'shared_secret':
-                return !empty($provider->secret_key) && hash_equals($provider->secret_key, (string)$incomingSecret);
+                return !empty($provider->secret_key) && hash_equals((string)$provider->secret_key, (string)$incomingSecret);
 
             case 'api_key':
                 $apiKey = $request->input('api_key') ?? $request->header('X-API-Key');
-                return !empty($provider->secret_key) && hash_equals($provider->secret_key, (string)$apiKey);
+                return !empty($provider->secret_key) && hash_equals((string)$provider->secret_key, (string)$apiKey);
 
             case 'hmac_signature':
                 $headerSig = $request->header(config('postback.signature_header', 'X-Postback-Signature'));

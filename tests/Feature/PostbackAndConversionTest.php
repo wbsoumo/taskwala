@@ -32,7 +32,7 @@ class PostbackAndConversionTest extends TestCase
 
         // Request from unauthorized IP 5.6.7.8
         $response = $this->call(
-            method: 'POST',
+            method: 'GET',
             uri: route('api.postback.handle', ['provider_slug' => 'network-a']),
             parameters: ['secret' => 'secret_12345', 'click_id' => 'CLK_123'],
             server: ['REMOTE_ADDR' => '5.6.7.8']
@@ -68,6 +68,7 @@ class PostbackAndConversionTest extends TestCase
             'default_affiliate_payout' => 100.00,
             'currency' => 'INR',
             'status' => 'active',
+            'postback_secret_key' => 'secret_999',
         ]);
 
         $link = AffiliateLink::create([
@@ -103,9 +104,9 @@ class PostbackAndConversionTest extends TestCase
 
         $provider->ipWhitelists()->create(['ip_address' => '127.0.0.1']);
 
-        // First Postback Request
+        // First Postback Request via GET
         $response1 = $this->call(
-            method: 'POST',
+            method: 'GET',
             uri: route('api.postback.handle', ['provider_slug' => 'network-b']),
             parameters: ['secret' => 'secret_999', 'click_id' => 'CLK_TEST_DUPLICATE', 'conversion_id' => 'TX_1001', 'status' => 'approved'],
             server: ['REMOTE_ADDR' => '127.0.0.1']
@@ -115,7 +116,7 @@ class PostbackAndConversionTest extends TestCase
 
         // Second duplicate Postback Request with same click_id and TX ID
         $response2 = $this->call(
-            method: 'POST',
+            method: 'GET',
             uri: route('api.postback.handle', ['provider_slug' => 'network-b']),
             parameters: ['secret' => 'secret_999', 'click_id' => 'CLK_TEST_DUPLICATE', 'conversion_id' => 'TX_1001', 'status' => 'approved'],
             server: ['REMOTE_ADDR' => '127.0.0.1']
@@ -149,6 +150,7 @@ class PostbackAndConversionTest extends TestCase
             'default_affiliate_payout' => 150.00,
             'currency' => 'INR',
             'status' => 'active',
+            'postback_secret_key' => 'offer_secret_abc',
         ]);
 
         $link = AffiliateLink::create([
@@ -174,11 +176,11 @@ class PostbackAndConversionTest extends TestCase
             'created_at' => now(),
         ]);
 
-        // Global postback hit
+        // Global postback hit via GET with correct offer secret key
         $response = $this->call(
-            method: 'POST',
+            method: 'GET',
             uri: route('api.postback.handle', ['provider_slug' => 'global']),
-            parameters: ['secret' => config('postback.global_secret', 'taskwala_postback_secret_key_2026'), 'click_id' => 'CLK_GLOBAL_TEST', 'conversion_id' => 'TX_GLOB_99', 'status' => 'approved'],
+            parameters: ['secret' => 'offer_secret_abc', 'click_id' => 'CLK_GLOBAL_TEST', 'conversion_id' => 'TX_GLOB_99', 'status' => 'approved'],
             server: ['REMOTE_ADDR' => '127.0.0.1']
         );
 

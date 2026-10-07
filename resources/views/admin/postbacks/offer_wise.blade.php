@@ -25,7 +25,8 @@
                     @forelse($campaigns as $camp)
                         @php
                             $slug = $camp->postbackProvider->slug ?? 'global';
-                            $url = url('/api/v1/postback/' . $slug);
+                            $secret = $camp->postback_secret_key ?? 'None';
+                            $url = url('/api/v1/postback/' . $slug) . '?click_id={click_id}' . ($camp->postback_secret_key ? '&secret=' . $camp->postback_secret_key : '');
                         @endphp
                         <tr>
                             <td>#{{ $camp->id }}</td>
@@ -40,10 +41,13 @@
                                 @else
                                     <span class="badge badge-secondary">Global System Default</span>
                                 @endif
+                                @if($camp->postback_secret_key)
+                                    <div class="mt-1"><small class="text-muted">Secret:</small> <code>{{ $camp->postback_secret_key }}</code></div>
+                                @endif
                             </td>
                             <td>
                                 <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control form-control-sm" value="{{ $url }}" readonly id="url_{{ $camp->id }}">
+                                    <input type="text" class="form-control form-control-sm font-weight-bold text-primary" value="{{ $url }}" readonly id="url_{{ $camp->id }}">
                                     <div class="input-group-append">
                                         <button class="btn btn-sm btn-outline-primary" onclick="navigator.clipboard.writeText('{{ $url }}'); alert('Copied Offer Postback URL!');">
                                             <i class="fas fa-copy"></i>

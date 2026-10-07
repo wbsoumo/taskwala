@@ -26,13 +26,7 @@
                         </select>
                     </div>
 
-                    <div class="form-group">
-                        <label>HTTP Request Method <span class="text-danger">*</span></label>
-                        <select name="http_method" class="form-control" required>
-                            <option value="POST">POST Method (Default)</option>
-                            <option value="GET">GET Method (Query String Parameters)</option>
-                        </select>
-                    </div>
+                    <input type="hidden" name="http_method" value="GET">
 
                     <div class="form-group">
                         <label>Target Click ID (click_id) <span class="text-danger">*</span></label>

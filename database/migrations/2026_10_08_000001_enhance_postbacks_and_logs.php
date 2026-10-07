@@ -18,6 +18,7 @@ return new class extends Migration
 
         Schema::table('campaigns', function (Blueprint $table) {
             $table->foreignId('postback_provider_id')->nullable()->after('duplicate_conversion_rules')->constrained('postback_providers')->nullOnDelete();
+            $table->string('postback_secret_key', 64)->nullable()->after('postback_provider_id');
         });
     }
 

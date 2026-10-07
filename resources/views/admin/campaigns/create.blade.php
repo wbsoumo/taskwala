@@ -69,12 +69,13 @@
                             </select>
                         </div>
                         <div class="col-md-3 form-group">
-                            <label>Advertiser / Network Name <span class="text-danger">*</span></label>
-                            <input type="text" name="advertiser_name" class="form-control" value="{{ old('advertiser_name') }}" placeholder="e.g. Network A" required>
+                            <label>Offer Postback Secret Key</label>
+                            <input type="text" name="postback_secret_key" class="form-control" value="{{ old('postback_secret_key') }}" placeholder="Auto-generated if left blank">
+                            <small class="form-text text-muted">Secret required in GET postback parameter <code>&amp;secret=...</code></small>
                         </div>
                         <div class="col-md-3 form-group">
-                            <label>Conversion Event <span class="text-danger">*</span></label>
-                            <input type="text" name="conversion_event" class="form-control" value="{{ old('conversion_event', 'account_opening') }}" placeholder="e.g. account_opening, lead_submit" required>
+                            <label>Advertiser / Network Name <span class="text-danger">*</span></label>
+                            <input type="text" name="advertiser_name" class="form-control" value="{{ old('advertiser_name') }}" placeholder="e.g. Network A" required>
                         </div>
                     </div>
 

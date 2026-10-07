@@ -15,7 +15,7 @@
                 <p class="text-muted">Use this universal Server-to-Server (S2S) postback webhook endpoint for all networks and advertisers when specific offer routing is not required.</p>
 
                 <div class="form-group">
-                    <label class="font-weight-bold">Global S2S Postback Endpoint (GET / POST)</label>
+                    <label class="font-weight-bold">Global S2S Postback Endpoint <span class="badge badge-success font-weight-bold ml-1">GET Method Only</span></label>
                     <div class="input-group">
                         <input type="text" id="globalUrlInput" class="form-control font-weight-bold text-primary" value="{{ $globalUrl }}" readonly>
                         <div class="input-group-append">

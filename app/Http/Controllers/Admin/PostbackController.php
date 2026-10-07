@@ -48,7 +48,6 @@ class PostbackController extends Controller
             'conversion_id' => ['nullable', 'string'],
             'status' => ['required', Rule::in(['approved', 'pending', 'rejected'])],
             'secret' => ['nullable', 'string'],
-            'http_method' => ['required', Rule::in(['GET', 'POST'])],
         ]);
 
         $url = url('/api/v1/postback/' . $validated['provider_slug']);
@@ -63,23 +62,19 @@ class PostbackController extends Controller
         }
 
         try {
-            if ($validated['http_method'] === 'GET') {
-                $response = \Illuminate\Support\Facades\Http::get($url, $params);
-            } else {
-                $response = \Illuminate\Support\Facades\Http::post($url, $params);
-            }
+            $response = \Illuminate\Support\Facades\Http::get($url, $params);
 
             $result = [
                 'status_code' => $response->status(),
                 'body' => $response->json() ?? $response->body(),
                 'target_url' => $url,
-                'method' => $validated['http_method'],
+                'method' => 'GET',
                 'params' => $params,
             ];
 
-            return redirect()->route('admin.postbacks.test')->with('test_result', $result)->with('success', 'Test S2S Postback fired successfully!');
+            return redirect()->route('admin.postbacks.test')->with('test_result', $result)->with('success', 'Test GET S2S Postback fired successfully!');
         } catch (\Exception $e) {
-            return redirect()->route('admin.postbacks.test')->withErrors(['test_error' => 'Failed to fire S2S Postback: ' . $e->getMessage()]);
+            return redirect()->route('admin.postbacks.test')->withErrors(['test_error' => 'Failed to fire GET S2S Postback: ' . $e->getMessage()]);
         }
     }
 

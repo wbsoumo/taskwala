@@ -33,6 +33,7 @@ class Campaign extends Model
         'kpi_requirements',
         'duplicate_conversion_rules',
         'postback_provider_id',
+        'postback_secret_key',
         'created_by',
         'updated_by',
     ];
@@ -60,6 +61,9 @@ class Campaign extends Model
             }
             if (empty($campaign->theme)) {
                 $campaign->theme = 'gradient_blue';
+            }
+            if (empty($campaign->postback_secret_key)) {
+                $campaign->postback_secret_key = Str::random(24);
             }
         });
     }

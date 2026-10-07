@@ -72,6 +72,7 @@ class CampaignController extends Controller
             'kpi_requirements' => ['nullable', 'string'],
             'duplicate_conversion_rules' => ['nullable', 'string'],
             'postback_provider_id' => ['nullable', 'exists:postback_providers,id'],
+            'postback_secret_key' => ['nullable', 'string', 'max:64'],
         ]);
 
         // Handle File Upload if provided
@@ -130,6 +131,7 @@ class CampaignController extends Controller
             'kpi_requirements' => ['nullable', 'string'],
             'duplicate_conversion_rules' => ['nullable', 'string'],
             'postback_provider_id' => ['nullable', 'exists:postback_providers,id'],
+            'postback_secret_key' => ['nullable', 'string', 'max:64'],
         ]);
 
         // Handle File Upload if provided
