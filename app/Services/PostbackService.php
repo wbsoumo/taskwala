@@ -337,7 +337,7 @@ class PostbackService
     ): PostbackLog {
         $processingTimeMs = (int) round((microtime(true) - $startTime) * 1000);
 
-        return PostbackLog::create([
+        $data = [
             'request_id' => $requestId,
             'postback_provider_id' => $provider?->id,
             'endpoint' => $request->fullUrl(),
@@ -345,7 +345,6 @@ class PostbackService
             'http_method' => $request->method(),
             'headers' => $request->headers->all(),
             'payload' => $request->all(),
-            'response_payload' => $responsePayload,
             'auth_result' => $authResult,
             'ip_whitelist_result' => $ipResult,
             'click_validation_result' => $clickResult,
@@ -354,6 +353,12 @@ class PostbackService
             'response_code' => $responseCode,
             'processing_time_ms' => $processingTimeMs,
             'created_at' => now(),
-        ]);
+        ];
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('postback_logs', 'response_payload')) {
+            $data['response_payload'] = $responsePayload;
+        }
+
+        return PostbackLog::create($data);
     }
 }
