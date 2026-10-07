@@ -39,10 +39,27 @@
                         <b>Conversion Event</b> <span class="float-right">{{ $campaign->conversion_event }}</span>
                     </li>
                     <li class="list-group-item">
-                        <b>Offer Postback Webhook</b> 
-                        <span class="float-right">
-                            <code>{{ url('/api/v1/postback/' . ($campaign->postbackProvider->slug ?? 'global')) }}</code>
+                        <b>Offer Secret Key</b> 
+                        <span class="float-right font-weight-bold text-dark">
+                            <code>{{ $campaign->postback_secret_key ?? 'N/A' }}</code>
                         </span>
+                    </li>
+                    <li class="list-group-item">
+                        <b>Offer S2S Postback GET Webhook Target</b> 
+                        @php
+                            $slug = $campaign->postbackProvider->slug ?? 'global';
+                            $postbackUrl = url('/api/v1/postback/' . $slug) . '?click_id={click_id}' . ($campaign->postback_secret_key ? '&secret=' . $campaign->postback_secret_key : '');
+                        @endphp
+                        <div class="mt-2">
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control font-weight-bold text-primary" value="{{ $postbackUrl }}" readonly id="campaignPostbackUrl">
+                                <div class="input-group-append">
+                                    <button class="btn btn-sm btn-primary" onclick="navigator.clipboard.writeText('{{ $postbackUrl }}'); alert('Copied S2S Postback Webhook URL!');">
+                                        <i class="fas fa-copy mr-1"></i> Copy Webhook URL
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </li>
                 </ul>
                 @if($campaign->terms)

@@ -56,8 +56,11 @@
                                 </div>
                             </td>
                             <td>
+                                <a href="{{ route('admin.campaigns.show', $camp) }}" class="btn btn-xs btn-info mr-1">
+                                    <i class="fas fa-eye mr-1"></i> View Details
+                                </a>
                                 <a href="{{ route('admin.campaigns.edit', $camp) }}" class="btn btn-xs btn-primary">
-                                    <i class="fas fa-cog mr-1"></i> Configure
+                                    <i class="fas fa-cog mr-1"></i> Edit
                                 </a>
                             </td>
                         </tr>
