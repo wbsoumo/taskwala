@@ -14,13 +14,22 @@
                 @csrf
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-8 form-group">
+                        <div class="col-md-6 form-group">
                             <label>Campaign Name <span class="text-danger">*</span></label>
                             <input type="text" name="name" class="form-control" value="{{ old('name') }}" placeholder="e.g. Kotak 811 Savings Account" required>
                         </div>
-                        <div class="col-md-4 form-group">
+                        <div class="col-md-3 form-group">
                             <label>Category <span class="text-danger">*</span></label>
                             <input type="text" name="category" class="form-control" value="{{ old('category', 'Banking') }}" required>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label>Campaign Type <span class="text-danger">*</span></label>
+                            <select name="campaign_type" class="form-control" required>
+                                <option value="cpa" {{ old('campaign_type', 'cpa') === 'cpa' ? 'selected' : '' }}>CPA (Cost Per Action)</option>
+                                <option value="cpl" {{ old('campaign_type') === 'cpl' ? 'selected' : '' }}>CPL (Cost Per Lead)</option>
+                                <option value="cps" {{ old('campaign_type') === 'cps' ? 'selected' : '' }}>CPS (Cost Per Sale)</option>
+                                <option value="cpi" {{ old('campaign_type') === 'cpi' ? 'selected' : '' }}>CPI (Cost Per Install)</option>
+                            </select>
                         </div>
                     </div>
 
@@ -31,13 +40,13 @@
                         </div>
                         <div class="col-md-6 form-group">
                             <label>Conversion Event <span class="text-danger">*</span></label>
-                            <input type="text" name="conversion_event" class="form-control" value="{{ old('conversion_event', 'account_opening') }}" required>
+                            <input type="text" name="conversion_event" class="form-control" value="{{ old('conversion_event', 'account_opening') }}" placeholder="e.g. account_opening, lead_submit" required>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label>Landing Target URL (with <code>{click_id}</code> macro) <span class="text-danger">*</span></label>
-                        <input type="url" name="landing_url" class="form-control" value="{{ old('landing_url') }}" placeholder="https://advertiser.com/landing?click_id={click_id}" required>
+                        <input type="text" name="landing_url" class="form-control" value="{{ old('landing_url') }}" placeholder="https://advertiser.com/landing?click_id={click_id}" required>
                         <small class="form-text text-muted">The system will automatically replace <code>{click_id}</code> with the generated unique tracking click ID.</small>
                     </div>
 

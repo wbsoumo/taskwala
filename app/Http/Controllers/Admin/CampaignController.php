@@ -54,8 +54,8 @@ class CampaignController extends Controller
             'short_description' => ['nullable', 'string', 'max:255'],
             'advertiser_name' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', 'max:100'],
-            'campaign_type' => ['required', 'string', 'max:50'],
-            'landing_url' => ['required', 'url'],
+            'campaign_type' => ['nullable', 'string', 'max:50'],
+            'landing_url' => ['required', 'string', 'max:2000'],
             'conversion_event' => ['required', 'string', 'max:100'],
             'advertiser_payout' => ['required', 'numeric', 'min:0'],
             'default_affiliate_payout' => ['required', 'numeric', 'min:0'],
@@ -67,6 +67,10 @@ class CampaignController extends Controller
             'kpi_requirements' => ['nullable', 'string'],
             'duplicate_conversion_rules' => ['nullable', 'string'],
         ]);
+
+        if (empty($validated['campaign_type'])) {
+            $validated['campaign_type'] = 'cpa';
+        }
 
         $campaign = $this->campaignService->createCampaign($validated, auth('admin')->id());
 
@@ -95,8 +99,8 @@ class CampaignController extends Controller
             'short_description' => ['nullable', 'string', 'max:255'],
             'advertiser_name' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', 'max:100'],
-            'campaign_type' => ['required', 'string', 'max:50'],
-            'landing_url' => ['required', 'url'],
+            'campaign_type' => ['nullable', 'string', 'max:50'],
+            'landing_url' => ['required', 'string', 'max:2000'],
             'conversion_event' => ['required', 'string', 'max:100'],
             'advertiser_payout' => ['required', 'numeric', 'min:0'],
             'default_affiliate_payout' => ['required', 'numeric', 'min:0'],
@@ -108,6 +112,10 @@ class CampaignController extends Controller
             'kpi_requirements' => ['nullable', 'string'],
             'duplicate_conversion_rules' => ['nullable', 'string'],
         ]);
+
+        if (empty($validated['campaign_type'])) {
+            $validated['campaign_type'] = 'cpa';
+        }
 
         $this->campaignService->updateCampaign($campaign, $validated, auth('admin')->id());
 

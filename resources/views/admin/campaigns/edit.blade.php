@@ -15,13 +15,22 @@
                 @method('PUT')
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-8 form-group">
+                        <div class="col-md-6 form-group">
                             <label>Campaign Name <span class="text-danger">*</span></label>
                             <input type="text" name="name" class="form-control" value="{{ old('name', $campaign->name) }}" required>
                         </div>
-                        <div class="col-md-4 form-group">
+                        <div class="col-md-3 form-group">
                             <label>Category <span class="text-danger">*</span></label>
                             <input type="text" name="category" class="form-control" value="{{ old('category', $campaign->category) }}" required>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label>Campaign Type <span class="text-danger">*</span></label>
+                            <select name="campaign_type" class="form-control" required>
+                                <option value="cpa" {{ old('campaign_type', $campaign->campaign_type) === 'cpa' ? 'selected' : '' }}>CPA (Cost Per Action)</option>
+                                <option value="cpl" {{ old('campaign_type', $campaign->campaign_type) === 'cpl' ? 'selected' : '' }}>CPL (Cost Per Lead)</option>
+                                <option value="cps" {{ old('campaign_type', $campaign->campaign_type) === 'cps' ? 'selected' : '' }}>CPS (Cost Per Sale)</option>
+                                <option value="cpi" {{ old('campaign_type', $campaign->campaign_type) === 'cpi' ? 'selected' : '' }}>CPI (Cost Per Install)</option>
+                            </select>
                         </div>
                     </div>
 
@@ -38,7 +47,7 @@
 
                     <div class="form-group">
                         <label>Landing Target URL (with <code>{click_id}</code> macro) <span class="text-danger">*</span></label>
-                        <input type="url" name="landing_url" class="form-control" value="{{ old('landing_url', $campaign->landing_url) }}" required>
+                        <input type="text" name="landing_url" class="form-control" value="{{ old('landing_url', $campaign->landing_url) }}" required>
                     </div>
 
                     <div class="row bg-light p-3 rounded mb-3 border">
