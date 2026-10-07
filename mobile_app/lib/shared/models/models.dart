@@ -1,5 +1,5 @@
 class User {
-  final int id;
+  final String publicId;
   final String name;
   final String email;
   final String? mobile;
@@ -9,7 +9,7 @@ class User {
   final bool payoutEnabled;
 
   User({
-    required this.id,
+    required this.publicId,
     required this.name,
     required this.email,
     this.mobile,
@@ -21,10 +21,10 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
+      publicId: json['public_id'] ?? json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       email: json['email'] ?? '',
-      mobile: json['mobile'],
+      mobile: json['mobile_number'] ?? json['mobile'],
       referralCode: json['referral_code'],
       status: json['status'] ?? 'active',
       kycStatus: json['kyc_status'] ?? 'approved',
@@ -33,10 +33,10 @@ class User {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
+        'public_id': publicId,
         'name': name,
         'email': email,
-        'mobile': mobile,
+        'mobile_number': mobile,
         'referral_code': referralCode,
         'status': status,
         'kyc_status': kycStatus,

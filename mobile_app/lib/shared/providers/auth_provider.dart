@@ -58,11 +58,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
         'password': password,
       });
 
-      if (response.data['success'] == true) {
-        final token = response.data['data']['token'];
+      final data = response.data;
+      if (data != null && (data['token'] != null || (data['data'] != null && data['data']['token'] != null))) {
+        final token = data['token'] ?? data['data']['token'];
+        final userData = data['user'] ?? data['data']?['user'] ?? {};
         await _storage.saveToken(token);
         _apiClient.setAuthToken(token);
-        final user = User.fromJson(response.data['data']['user']);
+        final user = User.fromJson(userData);
         state = state.copyWith(
           user: user,
           isAuthenticated: true,
@@ -72,7 +74,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       } else {
         state = state.copyWith(
           isLoading: false,
-          error: response.data['message'] ?? 'Login failed',
+          error: data['message'] ?? 'Login failed',
         );
         return false;
       }
@@ -98,17 +100,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final response = await _apiClient.post('/auth/register', data: {
         'name': name,
         'email': email,
-        'mobile': mobile,
+        'mobile_number': mobile,
         'password': password,
         'password_confirmation': passwordConfirmation,
         if (referralCode != null && referralCode.isNotEmpty) 'referral_code': referralCode,
       });
 
-      if (response.data['success'] == true) {
-        final token = response.data['data']['token'];
+      final data = response.data;
+      if (data != null && (data['token'] != null || (data['data'] != null && data['data']['token'] != null))) {
+        final token = data['token'] ?? data['data']['token'];
+        final userData = data['user'] ?? data['data']?['user'] ?? {};
         await _storage.saveToken(token);
         _apiClient.setAuthToken(token);
-        final user = User.fromJson(response.data['data']['user']);
+        final user = User.fromJson(userData);
         state = state.copyWith(
           user: user,
           isAuthenticated: true,
@@ -118,7 +122,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       } else {
         state = state.copyWith(
           isLoading: false,
-          error: response.data['message'] ?? 'Registration failed',
+          error: data['message'] ?? 'Registration failed',
         );
         return false;
       }
@@ -134,8 +138,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> fetchProfile() async {
     try {
       final response = await _apiClient.get('/user/profile');
-      if (response.data['success'] == true) {
-        final user = User.fromJson(response.data['data']);
+      final data = response.data;
+      if (data != null && (data['user'] != null || data['data'] != null)) {
+        final userData = data['user'] ?? data['data'];
+        final user = User.fromJson(userData);
         state = state.copyWith(
           user: user,
           isAuthenticated: true,

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -23,16 +24,18 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: '/',
+    refreshListenable: _AuthListenable(ref),
     redirect: (context, state) {
       final isLoggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/register';
 
-      if (authState.isLoading) return null;
+      final currentAuth = ref.read(authProvider);
+      if (currentAuth.isLoading) return null;
 
-      if (!authState.isAuthenticated && !isLoggingIn) {
+      if (!currentAuth.isAuthenticated && !isLoggingIn) {
         return '/login';
       }
 
-      if (authState.isAuthenticated && isLoggingIn) {
+      if (currentAuth.isAuthenticated && isLoggingIn) {
         return '/';
       }
 
@@ -107,3 +110,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+class _AuthListenable extends ChangeNotifier {
+  _AuthListenable(Ref ref) {
+    ref.listen<AuthState>(authProvider, (_, __) {
+      notifyListeners();
+    });
+  }
+}
