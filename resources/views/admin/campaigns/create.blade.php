@@ -10,7 +10,7 @@
             <div class="card-header">
                 <h3 class="card-title font-weight-bold"><i class="fas fa-plus-circle text-primary mr-2"></i>New Campaign Definition</h3>
             </div>
-            <form action="{{ route('admin.campaigns.store') }}" method="POST">
+            <form action="{{ route('admin.campaigns.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="card-body">
                     <div class="row">
@@ -33,12 +33,24 @@
                         </div>
                     </div>
 
-                    <div class="row">
+                    <div class="row bg-light p-3 rounded mb-3 border">
                         <div class="col-md-6 form-group">
-                            <label>Campaign Logo / Icon Image URL</label>
-                            <input type="text" name="logo_url" class="form-control" value="{{ old('logo_url') }}" placeholder="https://domain.com/logo.png">
+                            <label class="font-weight-bold"><i class="fas fa-upload text-primary mr-1"></i> Upload Campaign Logo / Icon Image</label>
+                            <div class="custom-file">
+                                <input type="file" name="logo_file" class="custom-file-input" id="logoFileInput" accept="image/*">
+                                <label class="custom-file-label" for="logoFileInput">Choose logo image file...</label>
+                            </div>
+                            <small class="form-text text-muted">Supports PNG, JPG, WEBP, SVG (Max 2MB).</small>
                         </div>
                         <div class="col-md-6 form-group">
+                            <label class="font-weight-bold">OR External Logo Image URL</label>
+                            <input type="text" name="logo_url" class="form-control" value="{{ old('logo_url') }}" placeholder="https://domain.com/logo.png">
+                            <small class="form-text text-muted">Fallback if no file is uploaded above.</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 form-group">
                             <label>Public Offer Page Theme <span class="text-danger">*</span></label>
                             <select name="theme" class="form-control" required>
                                 <option value="gradient_blue" {{ old('theme', 'gradient_blue') === 'gradient_blue' ? 'selected' : '' }}>Vibrant Gradient Blue (Default)</option>
@@ -47,14 +59,11 @@
                                 <option value="clean_minimal" {{ old('theme') === 'clean_minimal' ? 'selected' : '' }}>Clean Light Minimalist</option>
                             </select>
                         </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 form-group">
+                        <div class="col-md-4 form-group">
                             <label>Advertiser / Network Name <span class="text-danger">*</span></label>
                             <input type="text" name="advertiser_name" class="form-control" value="{{ old('advertiser_name') }}" placeholder="e.g. Network A" required>
                         </div>
-                        <div class="col-md-6 form-group">
+                        <div class="col-md-4 form-group">
                             <label>Conversion Event <span class="text-danger">*</span></label>
                             <input type="text" name="conversion_event" class="form-control" value="{{ old('conversion_event', 'account_opening') }}" placeholder="e.g. account_opening, lead_submit" required>
                         </div>
@@ -134,3 +143,12 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+    $('#logoFileInput').on('change', function() {
+        var fileName = $(this).val().split('\\').pop();
+        $(this).next('.custom-file-label').addClass("selected").html(fileName);
+    });
+</script>
+@endpush

@@ -10,7 +10,7 @@
             <div class="card-header">
                 <h3 class="card-title font-weight-bold"><i class="fas fa-edit text-primary mr-2"></i>Edit Campaign</h3>
             </div>
-            <form action="{{ route('admin.campaigns.update', $campaign) }}" method="POST">
+            <form action="{{ route('admin.campaigns.update', $campaign) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <div class="card-body">
@@ -35,11 +35,18 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 form-group">
-                            <label>Campaign Logo / Icon Image URL</label>
+                        <div class="col-md-4 form-group">
+                            <label>Upload Logo File (PNG/JPG/WebP/SVG)</label>
+                            <div class="custom-file">
+                                <input type="file" name="logo_file" class="custom-file-input" id="logoFile" accept="image/*">
+                                <label class="custom-file-label" for="logoFile">Choose file...</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 form-group">
+                            <label>OR Logo Image Direct URL</label>
                             <input type="text" name="logo_url" class="form-control" value="{{ old('logo_url', $campaign->logo_url) }}" placeholder="https://domain.com/logo.png">
                         </div>
-                        <div class="col-md-6 form-group">
+                        <div class="col-md-4 form-group">
                             <label>Public Offer Page Theme <span class="text-danger">*</span></label>
                             <select name="theme" class="form-control" required>
                                 <option value="gradient_blue" {{ old('theme', $campaign->theme) === 'gradient_blue' ? 'selected' : '' }}>Vibrant Gradient Blue (Default)</option>
@@ -131,3 +138,12 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+    $('#logoFile').on('change', function() {
+        var fileName = $(this).val().split('\\').pop();
+        $(this).next('.custom-file-label').addClass("selected").html(fileName || 'Choose file...');
+    });
+</script>
+@endpush

@@ -7,6 +7,7 @@ use App\Models\Campaign;
 use App\Models\User;
 use App\Services\CampaignService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class CampaignController extends Controller
@@ -53,6 +54,7 @@ class CampaignController extends Controller
             'description' => ['nullable', 'string'],
             'short_description' => ['nullable', 'string', 'max:255'],
             'logo_url' => ['nullable', 'string', 'max:255'],
+            'logo_file' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
             'theme' => ['required', Rule::in(['gradient_blue', 'dark_glass', 'emerald', 'clean_minimal'])],
             'advertiser_name' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', 'max:100'],
@@ -70,9 +72,17 @@ class CampaignController extends Controller
             'duplicate_conversion_rules' => ['nullable', 'string'],
         ]);
 
+        // Handle File Upload if provided
+        if ($request->hasFile('logo_file')) {
+            $path = $request->file('logo_file')->store('campaigns', 'public');
+            $validated['logo_url'] = Storage::url($path);
+        }
+
         if (empty($validated['campaign_type'])) {
             $validated['campaign_type'] = 'cpa';
         }
+
+        unset($validated['logo_file']);
 
         $campaign = $this->campaignService->createCampaign($validated, auth('admin')->id());
 
@@ -100,6 +110,7 @@ class CampaignController extends Controller
             'description' => ['nullable', 'string'],
             'short_description' => ['nullable', 'string', 'max:255'],
             'logo_url' => ['nullable', 'string', 'max:255'],
+            'logo_file' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
             'theme' => ['required', Rule::in(['gradient_blue', 'dark_glass', 'emerald', 'clean_minimal'])],
             'advertiser_name' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', 'max:100'],
@@ -117,9 +128,17 @@ class CampaignController extends Controller
             'duplicate_conversion_rules' => ['nullable', 'string'],
         ]);
 
+        // Handle File Upload if provided
+        if ($request->hasFile('logo_file')) {
+            $path = $request->file('logo_file')->store('campaigns', 'public');
+            $validated['logo_url'] = Storage::url($path);
+        }
+
         if (empty($validated['campaign_type'])) {
             $validated['campaign_type'] = 'cpa';
         }
+
+        unset($validated['logo_file']);
 
         $this->campaignService->updateCampaign($campaign, $validated, auth('admin')->id());
 
