@@ -140,7 +140,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Ref: ${c.referenceId}', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted)),
+                              Expanded(
+                                child: Text(
+                                  'Ref: ${c.referenceId}',
+                                  style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               Text(c.createdAt, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted)),
                             ],
                           ),
