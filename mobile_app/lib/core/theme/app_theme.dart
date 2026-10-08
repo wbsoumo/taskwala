@@ -2,31 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  // Brand Primary & Accents
-  static const Color primary = Color(0xFF0F172A); // Slate 900
-  static const Color primaryLight = Color(0xFF1E293B); // Slate 800
-  static const Color secondary = Color(0xFF475569); // Slate 600
-  static const Color accent = Color(0xFF0284C7); // Sky 600
-  static const Color accentLight = Color(0xFFE0F2FE); // Sky 100
+  // Primary Purple & Vibrant Gradient Palette (Matching Reference Design)
+  static const Color primary = Color(0xFF5B4DFF); // Vibrant Electric Indigo / Purple
+  static const Color primaryDark = Color(0xFF4335E6);
+  static const Color primaryLight = Color(0xFFEEECFF); // Light purple soft fill
+  static const Color primaryGradientStart = Color(0xFF6C5CE7);
+  static const Color primaryGradientEnd = Color(0xFF4834D4);
+
+  static const Color secondary = Color(0xFF8C7CFF);
+  static const Color accent = Color(0xFF00D2D3); // Turquoise / Teal accent
+  static const Color accentLight = Color(0xFFE0F7F6);
 
   // Status & Financial Indicators
-  static const Color success = Color(0xFF10B981); // Emerald 500
-  static const Color successBg = Color(0xFFD1FAE5); // Emerald 100
-  static const Color pending = Color(0xFFF59E0B); // Amber 500
-  static const Color warning = Color(0xFFF59E0B); // Amber 500 (Alias for pending)
-  static const Color pendingBg = Color(0xFFFEF3C7); // Amber 100
-  static const Color danger = Color(0xFFEF4444); // Red 500
-  static const Color dangerBg = Color(0xFFFEE2E2); // Red 100
+  static const Color success = Color(0xFF10B981); // Emerald Green
+  static const Color successBg = Color(0xFFE6F4EA);
+  static const Color pending = Color(0xFFF59E0B); // Amber / Orange
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color pendingBg = Color(0xFFFEF3C7);
+  static const Color danger = Color(0xFFFF4D4D); // Soft Red
+  static const Color dangerBg = Color(0xFFFFEAEA);
 
   // Surfaces & Backgrounds
-  static const Color background = Color(0xFFF8FAFC); // Slate 50
-  static const Color surface = Color(0xFFFFFFFF); // White
-  static const Color border = Color(0xFFE2E8F0); // Slate 200
+  static const Color background = Color(0xFFF6F8FC); // Clean Soft Tint Background
+  static const Color surface = Color(0xFFFFFFFF); // White Surface Cards
+  static const Color border = Color(0xFFEBEFF6); // Subtle Card Borders
 
   // Text Colors
-  static const Color textPrimary = Color(0xFF0F172A); // Dark Primary Text
-  static const Color textSecondary = Color(0xFF64748B); // Muted Secondary Text
-  static const Color textMuted = Color(0xFF94A3B8); // Muted Tertiary Text
+  static const Color textPrimary = Color(0xFF1E2022); // Deep Charcoal Text
+  static const Color textSecondary = Color(0xFF676E79); // Medium Muted Slate
+  static const Color textMuted = Color(0xFF9EA6B4); // Light Muted
 }
 
 class AppTheme {
@@ -38,7 +42,7 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
-        secondary: AppColors.accent,
+        secondary: AppColors.secondary,
         surface: AppColors.surface,
         error: AppColors.danger,
       ),
@@ -63,18 +67,37 @@ class AppTheme {
         color: AppColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: AppColors.border, width: 1),
         ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.background,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+        labelStyle: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 14),
+        hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );

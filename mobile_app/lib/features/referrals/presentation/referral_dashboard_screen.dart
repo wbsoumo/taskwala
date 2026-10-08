@@ -14,227 +14,251 @@ class ReferralDashboardScreen extends ConsumerWidget {
     final referralAsync = ref.watch(referralDashboardProvider);
     final teamAsync = ref.watch(teamMembersProvider);
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: const Text('Refer & Earn Program'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Overview & Link'),
-              Tab(text: 'My Team'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            // Overview Tab
-            referralAsync.when(
-              data: (refData) => SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        title: Text('Refer & Earn', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18)),
+      ),
+      body: referralAsync.when(
+        data: (refData) => SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Purple Invite Header Banner matching reference UI
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primaryGradientStart, AppColors.primaryGradientEnd],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Row(
                   children: [
-                    // Active Rule Info Banner
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.primary.withAlpha(50)),
-                      ),
-                      child: Row(
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.card_giftcard, color: AppColors.primary, size: 28),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Active Referral Rule',
-                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary)),
-                                Text(refData.currentRuleSummary,
-                                    style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-                              ],
-                            ),
+                          Text(
+                            'Invite Friends',
+                            style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Earn More Together',
+                            style: GoogleFonts.inter(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Get 10% of your friend\'s approved earnings forever.',
+                            style: GoogleFonts.inter(fontSize: 11, color: Colors.white.withOpacity(0.85)),
                           ),
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 20),
-
-                    // Stats Grid
-                    GridView.count(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                      childAspectRatio: 1.6,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: [
-                        _buildStatBox('Total Referred', refData.totalReferred.toString(), Icons.people_outline, AppColors.primary),
-                        _buildStatBox('Earnings', '₹${refData.totalEarnings.toStringAsFixed(0)}', Icons.monetization_on_outlined, AppColors.success),
-                        _buildStatBox('Pending', '₹${refData.pendingEarnings.toStringAsFixed(0)}', Icons.hourglass_top, AppColors.warning),
-                        _buildStatBox('Conversions', refData.convertedCount.toString(), Icons.task_alt, AppColors.secondary),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Referral Link Card
-                    Text('Your Exclusive Referral Link', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-
+                    const SizedBox(width: 12),
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.border),
+                        color: Colors.white.withOpacity(0.15),
+                        shape: BoxShape.circle,
                       ),
+                      child: const Icon(Icons.people_alt_rounded, size: 48, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Shareable Referral Link Card
+              Text('Your Referral Link', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        refData.referralLink,
+                        style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy_rounded, size: 20, color: AppColors.primary),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: refData.referralLink));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Referral link copied!')),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.share_rounded, size: 20, color: AppColors.primary),
+                      onPressed: () {
+                        Share.share('Join TaskPartner with my referral code ${refData.referralCode}: ${refData.referralLink}');
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // 4 Stat Box Grid matching reference UI
+              GridView.count(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 2.2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _buildReferralStatBox('Total Referrals', refData.totalReferred.toString(), AppColors.textPrimary),
+                  _buildReferralStatBox('Active Users', refData.activeCount.toString(), AppColors.primary),
+                  _buildReferralStatBox('Referral Earnings', '₹${refData.totalEarnings.toStringAsFixed(0)}', AppColors.success),
+                  _buildReferralStatBox('Pending', '₹${refData.pendingEarnings.toStringAsFixed(0)}', AppColors.pending),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Current Referral Program Banner
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.card_giftcard_rounded, color: AppColors.primary, size: 28),
+                    const SizedBox(width: 14),
+                    Expanded(
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('Referral Code:', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.background,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: Text(
-                                  refData.referralCode,
-                                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 20),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  refData.referralLink,
-                                  style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.copy, size: 20),
-                                onPressed: () {
-                                  Clipboard.setData(ClipboardData(text: refData.referralLink));
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Referral link copied!')),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              Share.share('Join Taskwala with my code ${refData.referralCode}: ${refData.referralLink}');
-                            },
-                            icon: const Icon(Icons.share, size: 18),
-                            label: const Text('Share Referral Link'),
-                          ),
+                          Text('Current Referral Program', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold)),
+                          Text(refData.currentRuleSummary, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
                   ],
                 ),
               ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text('Error: $err')),
-            ),
 
-            // Team Tab
-            teamAsync.when(
-              data: (members) {
-                if (members.isEmpty) {
-                  return Center(
-                    child: Text('No team members referred yet.', style: GoogleFonts.inter(color: AppColors.textMuted)),
-                  );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: members.length,
-                  itemBuilder: (context, index) {
-                    final m = members[index];
+              const SizedBox(height: 24),
+
+              // Team Members List
+              Text('Referred Team Members', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+
+              teamAsync.when(
+                data: (members) {
+                  if (members.isEmpty) {
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(20),
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: AppColors.primaryLight,
-                            child: Text(m.name[0], style: const TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Text('No team members joined yet.', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 13)),
+                    );
+                  }
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: members.length,
+                    itemBuilder: (context, index) {
+                      final m = members[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: AppColors.primaryLight,
+                              child: Text(m.name[0], style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(m.name, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  Text('Joined: ${m.joinedDate}', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text(m.name, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
-                                Text('Joined: ${m.joinedDate}', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+                                Text('₹${m.referralEarnings.toStringAsFixed(0)}',
+                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppColors.success, fontSize: 14)),
+                                Text('${m.qualifyingConversions} Conversions', style: GoogleFonts.inter(fontSize: 10, color: AppColors.textMuted)),
                               ],
                             ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text('₹${m.referralEarnings.toStringAsFixed(0)}',
-                                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppColors.success, fontSize: 14)),
-                              Text('${m.qualifyingConversions} Conversions',
-                                  style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text('Error: $err')),
-            ),
-          ],
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, __) => const SizedBox(),
+              ),
+            ],
+          ),
         ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(child: Text('Error: $err')),
       ),
     );
   }
 
-  Widget _buildStatBox(String label, String value, IconData icon, Color color) {
+  Widget _buildReferralStatBox(String label, String value, Color valueColor) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Text(label, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(value, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(label, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+          const SizedBox(height: 2),
+          Text(value, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: valueColor)),
         ],
       ),
     );

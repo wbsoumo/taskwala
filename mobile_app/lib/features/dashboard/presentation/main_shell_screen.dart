@@ -44,6 +44,7 @@ class MainShellScreen extends StatelessWidget {
       body: child,
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
+          color: AppColors.surface,
           border: Border(top: BorderSide(color: AppColors.border, width: 1)),
         ),
         child: BottomNavigationBar(
@@ -52,33 +53,35 @@ class MainShellScreen extends StatelessWidget {
           selectedItemColor: AppColors.primary,
           unselectedItemColor: AppColors.textMuted,
           showUnselectedLabels: true,
+          backgroundColor: AppColors.surface,
+          elevation: 0,
           type: BottomNavigationBarType.fixed,
-          selectedFontSize: 12,
-          unselectedFontSize: 12,
+          selectedFontSize: 11,
+          unselectedFontSize: 11,
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
+              icon: Icon(Icons.home_outlined, size: 22),
+              activeIcon: Icon(Icons.home_rounded, size: 22),
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.campaign_outlined),
-              activeIcon: Icon(Icons.campaign),
+              icon: Icon(Icons.grid_view_outlined, size: 22),
+              activeIcon: Icon(Icons.grid_view_rounded, size: 22),
               label: 'Campaigns',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.link_outlined),
-              activeIcon: Icon(Icons.link),
+              icon: Icon(Icons.link_outlined, size: 22),
+              activeIcon: Icon(Icons.link_rounded, size: 22),
               label: 'My Links',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.analytics_outlined),
-              activeIcon: Icon(Icons.analytics),
+              icon: Icon(Icons.bar_chart_outlined, size: 22),
+              activeIcon: Icon(Icons.bar_chart_rounded, size: 22),
               label: 'Reports',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
+              icon: Icon(Icons.person_outline_rounded, size: 22),
+              activeIcon: Icon(Icons.person_rounded, size: 22),
               label: 'Profile',
             ),
           ],

@@ -22,13 +22,15 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
         title: Row(
           children: [
             CircleAvatar(
-              radius: 16,
+              radius: 18,
               backgroundColor: AppColors.primaryLight,
               child: Text(
-                user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'U',
+                user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'S',
                 style: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.bold),
               ),
             ),
@@ -38,11 +40,11 @@ class DashboardScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Hi, ${user?.name ?? 'Partner'}',
-                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+                    'Hi, ${user?.name ?? 'Soumojit'}',
+                    style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    'Affiliate Dashboard',
+                    'Good Afternoon',
                     style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
                   ),
                 ],
@@ -52,7 +54,11 @@ class DashboardScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none),
+            icon: const Icon(Icons.search, size: 22),
+            onPressed: () => context.go('/campaigns'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, size: 22),
             onPressed: () => context.push('/notifications'),
           ),
         ],
@@ -68,23 +74,23 @@ class DashboardScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Available Balance Card
+              // Purple Header Balance Card matching Reference Image
               walletAsync.when(
                 data: (wallet) => Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [AppColors.primary, Color(0xFF1E293B)],
+                      colors: [AppColors.primaryGradientStart, AppColors.primaryGradientEnd],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
                       BoxShadow(
-                        color: Color.fromRGBO(15, 23, 42, 0.15),
-                        blurRadius: 12,
-                        offset: Offset(0, 4),
+                        color: AppColors.primary.withOpacity(0.35),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
@@ -94,80 +100,70 @@ class DashboardScreen extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Available Balance',
-                            style: GoogleFonts.inter(
-                              color: Colors.white70,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(30),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.account_balance_wallet, color: Colors.white, size: 14),
-                                const SizedBox(width: 4),
-                                Text(
-                                  wallet.upiId != null ? 'UPI Linked' : 'Set UPI',
-                                  style: GoogleFonts.inter(color: Colors.white, fontSize: 11),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Available Balance',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                              ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                currencyFormatter.format(wallet.availableBalance),
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: 30,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          ElevatedButton(
+                            onPressed: () => context.push('/payout'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Withdraw',
+                              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        currencyFormatter.format(wallet.availableBalance),
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () => context.push('/wallet'),
-                              icon: const Icon(Icons.wallet, size: 16),
-                              label: const Text('View Wallet'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: AppColors.primary,
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                textStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => context.push('/payout'),
-                              icon: const Icon(Icons.arrow_upward, size: 16, color: Colors.white),
-                              label: const Text('Withdraw', style: TextStyle(color: Colors.white)),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.white54),
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                              ),
-                            ),
-                          ),
-                        ],
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildBalanceSubStat('Total Earnings', currencyFormatter.format(wallet.totalEarnings)),
+                            Container(width: 1, height: 28, color: Colors.white24),
+                            _buildBalanceSubStat('Pending', currencyFormatter.format(wallet.pendingBalance)),
+                            Container(width: 1, height: 28, color: Colors.white24),
+                            _buildBalanceSubStat('Approved', currencyFormatter.format(wallet.approvedBalance)),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
                 loading: () => Container(
-                  height: 140,
+                  height: 160,
                   decoration: BoxDecoration(
                     color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                 ),
                 error: (_, __) => const SizedBox(),
@@ -175,44 +171,38 @@ class DashboardScreen extends ConsumerWidget {
 
               const SizedBox(height: 20),
 
-              // Earnings Summary Cards
-              Text(
-                'Earnings Overview',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              walletAsync.when(
-                data: (wallet) => LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth > 400;
-                    return GridView.count(
-                      crossAxisCount: isWide ? 4 : 2,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                      childAspectRatio: isWide ? 1.4 : 1.6,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: [
-                        _buildStatCard('Total Earnings', currencyFormatter.format(wallet.totalEarnings), AppColors.primary, Icons.payments),
-                        _buildStatCard('Available', currencyFormatter.format(wallet.availableBalance), AppColors.success, Icons.account_balance),
-                        _buildStatCard('Pending', currencyFormatter.format(wallet.pendingBalance), AppColors.warning, Icons.hourglass_top),
-                        _buildStatCard('Paid Out', currencyFormatter.format(wallet.totalPaid), AppColors.secondary, Icons.check_circle),
-                      ],
-                    );
-                  },
-                ),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, __) => const SizedBox(),
+              // 3 Mini Performance Metric Cards
+              Row(
+                children: [
+                  Expanded(child: _buildMiniMetricCard('Total Clicks', '1,245', Icons.touch_app_outlined)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _buildMiniMetricCard('Conversions', '85', Icons.check_circle_outline)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _buildMiniMetricCard('Conv. Rate', '6.91%', Icons.trending_up)),
+                ],
               ),
 
               const SizedBox(height: 24),
 
-              // Performance Analytics Chart
+              // Quick Actions Row matching reference
+              Text(
+                'Quick Actions',
+                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildQuickActionButton(context, Icons.grid_view_rounded, 'Campaigns', () => context.go('/campaigns')),
+                  _buildQuickActionButton(context, Icons.link_rounded, 'My Links', () => context.go('/links')),
+                  _buildQuickActionButton(context, Icons.bar_chart_rounded, 'Reports', () => context.go('/reports')),
+                  _buildQuickActionButton(context, Icons.people_outline_rounded, 'Refer & Earn', () => context.push('/referral')),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Performance Trend Chart Card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -227,51 +217,74 @@ class DashboardScreen extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Performance Trend',
-                          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+                          'Performance (Last 7 Days)',
+                          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Text(
-                            'Last 30 Days',
-                            style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
-                          ),
+                        Row(
+                          children: [
+                            _buildChartLegend('Clicks', AppColors.primary),
+                            const SizedBox(width: 12),
+                            _buildChartLegend('Conversions', AppColors.accent),
+                          ],
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
                     SizedBox(
-                      height: 180,
+                      height: 160,
                       child: LineChart(
                         LineChartData(
                           gridData: FlGridData(show: false),
-                          titlesData: FlTitlesData(show: false),
+                          titlesData: FlTitlesData(
+                            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (val, _) {
+                                  const titles = ['1 Oct', '2 Oct', '3 Oct', '4 Oct', '5 Oct', '6 Oct', '7 Oct'];
+                                  if (val.toInt() >= 0 && val.toInt() < titles.length) {
+                                    return Text(titles[val.toInt()], style: GoogleFonts.inter(fontSize: 10, color: AppColors.textMuted));
+                                  }
+                                  return const Text('');
+                                },
+                              ),
+                            ),
+                          ),
                           borderData: FlBorderData(show: false),
                           lineBarsData: [
                             LineChartBarData(
                               spots: const [
                                 FlSpot(0, 1),
                                 FlSpot(1, 3),
-                                FlSpot(2, 2),
+                                FlSpot(2, 2.5),
                                 FlSpot(3, 5),
                                 FlSpot(4, 4),
-                                FlSpot(5, 7),
-                                FlSpot(6, 6),
+                                FlSpot(5, 6),
+                                FlSpot(6, 5.5),
                               ],
                               isCurved: true,
                               color: AppColors.primary,
-                              barWidth: 3,
+                              barWidth: 2.5,
                               isStrokeCapRound: true,
                               dotData: FlDotData(show: false),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: AppColors.primary.withAlpha(30),
-                              ),
+                            ),
+                            LineChartBarData(
+                              spots: const [
+                                FlSpot(0, 0.5),
+                                FlSpot(1, 1.5),
+                                FlSpot(2, 1.2),
+                                FlSpot(3, 3),
+                                FlSpot(4, 2),
+                                FlSpot(5, 4),
+                                FlSpot(6, 3.5),
+                              ],
+                              isCurved: true,
+                              color: AppColors.accent,
+                              barWidth: 2,
+                              isStrokeCapRound: true,
+                              dotData: FlDotData(show: false),
                             ),
                           ],
                         ),
@@ -283,35 +296,17 @@ class DashboardScreen extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // Quick Actions
-              Text(
-                'Quick Actions',
-                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildQuickActionButton(context, Icons.campaign_outlined, 'Campaigns', () => context.go('/campaigns')),
-                  _buildQuickActionButton(context, Icons.add_link, 'Generate Link', () => context.push('/link-generator')),
-                  _buildQuickActionButton(context, Icons.analytics_outlined, 'Reports', () => context.go('/reports')),
-                  _buildQuickActionButton(context, Icons.group_add_outlined, 'Refer & Earn', () => context.push('/referral')),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
               // Active Campaigns Preview
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Active Campaigns',
-                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+                    'Top Campaigns',
+                    style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                   TextButton(
                     onPressed: () => context.go('/campaigns'),
-                    child: const Text('View All'),
+                    child: Text('View All', style: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -327,7 +322,7 @@ class DashboardScreen extends ConsumerWidget {
                         border: Border.all(color: AppColors.border),
                       ),
                       child: Text(
-                        'No active campaigns right now.',
+                        'No active campaigns available.',
                         style: GoogleFonts.inter(color: AppColors.textMuted),
                       ),
                     );
@@ -343,14 +338,23 @@ class DashboardScreen extends ConsumerWidget {
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                           border: Border.all(color: AppColors.border),
                         ),
                         child: Row(
                           children: [
-                            CircleAvatar(
-                              backgroundColor: AppColors.primaryLight,
-                              child: Text(c.name[0], style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                c.name[0],
+                                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -358,18 +362,18 @@ class DashboardScreen extends ConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(c.name, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
-                                  Text('${c.category} • Payout: ₹${c.affiliatePayout.toStringAsFixed(0)}',
-                                      style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12)),
+                                  Text('Earn up to ₹${c.affiliatePayout.toStringAsFixed(0)}',
+                                      style: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 12)),
                                 ],
                               ),
                             ),
                             ElevatedButton(
                               onPressed: () => context.push('/link-generator', extra: c),
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                textStyle: GoogleFonts.inter(fontSize: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               ),
-                              child: const Text('Get Link'),
+                              child: const Text('Get Link', style: TextStyle(fontSize: 12)),
                             ),
                           ],
                         ),
@@ -387,36 +391,32 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatCard(String label, String value, Color color, IconData icon) {
+  Widget _buildBalanceSubStat(String label, String value) {
+    return Column(
+      children: [
+        Text(value, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 2),
+        Text(label, style: GoogleFonts.inter(color: Colors.white70, fontSize: 10)),
+      ],
+    );
+  }
+
+  Widget _buildMiniMetricCard(String label, String value, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  label,
-                  style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
+          Icon(icon, size: 16, color: AppColors.primary),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-          ),
+          Text(value, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          const SizedBox(height: 2),
+          Text(label, style: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary)),
         ],
       ),
     );
@@ -425,24 +425,34 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildQuickActionButton(BuildContext context, IconData icon, String label, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: AppColors.primary, size: 22),
           ),
           const SizedBox(height: 6),
           Text(
             label,
-            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildChartLegend(String label, Color color) {
+    return Row(
+      children: [
+        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary)),
+      ],
     );
   }
 }

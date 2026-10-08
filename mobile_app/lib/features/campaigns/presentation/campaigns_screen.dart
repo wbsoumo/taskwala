@@ -23,13 +23,15 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Campaign Marketplace'),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        title: Text('Campaigns List', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18)),
       ),
       body: campaignsAsync.when(
         data: (campaigns) {
-          final categories = ['All', ...campaigns.map((c) => c.category).toSet()];
+          final categories = ['All', 'Banking', 'Credit Card', 'Loan', 'Demat'];
           final filtered = campaigns.where((c) {
-            final matchesCategory = _selectedCategory == 'All' || c.category == _selectedCategory;
+            final matchesCategory = _selectedCategory == 'All' || c.category.toLowerCase().contains(_selectedCategory.toLowerCase());
             final matchesSearch = c.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                 c.category.toLowerCase().contains(_searchQuery.toLowerCase());
             return matchesCategory && matchesSearch;
@@ -37,22 +39,22 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
 
           return Column(
             children: [
-              // Search & Filter Section
+              // Search Bar & Filter Chips
               Container(
                 padding: const EdgeInsets.all(16),
                 color: AppColors.surface,
                 child: Column(
                   children: [
                     TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Search campaigns or categories...',
-                        prefixIcon: Icon(Icons.search),
+                      decoration: InputDecoration(
+                        hintText: 'Search campaigns...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        fillColor: AppColors.background,
+                        filled: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                       ),
-                      onChanged: (val) {
-                        setState(() {
-                          _searchQuery = val;
-                        });
-                      },
+                      onChanged: (val) => setState(() => _searchQuery = val),
                     ),
                     const SizedBox(height: 12),
                     SingleChildScrollView(
@@ -62,19 +64,18 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
                           final isSelected = cat == _selectedCategory;
                           return Padding(
                             padding: const EdgeInsets.only(right: 8.0),
-                            child: FilterChip(
+                            child: ChoiceChip(
                               label: Text(cat),
                               selected: isSelected,
-                              selectedColor: AppColors.primaryLight,
+                              selectedColor: AppColors.primary,
+                              backgroundColor: AppColors.background,
                               labelStyle: GoogleFonts.inter(
-                                color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                color: isSelected ? Colors.white : AppColors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                               ),
-                              onSelected: (selected) {
-                                setState(() {
-                                  _selectedCategory = cat;
-                                });
-                              },
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              onSelected: (_) => setState(() => _selectedCategory = cat),
                             ),
                           );
                         }).toList(),
@@ -84,7 +85,7 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
                 ),
               ),
 
-              // Campaign List
+              // Campaign Cards List matching reference UI
               Expanded(
                 child: filtered.isEmpty
                     ? Center(
@@ -98,102 +99,100 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           final c = filtered[index];
-                          return Card(
+                          return Container(
                             margin: const EdgeInsets.only(bottom: 12),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.border),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.02),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: InkWell(
+                              onTap: () => context.push('/link-generator', extra: c),
+                              child: Row(
                                 children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primaryLight,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          c.name[0],
-                                          style: GoogleFonts.inter(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryLight,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      c.name[0],
+                                      style: GoogleFonts.inter(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
                                           children: [
-                                            Text(
-                                              c.name,
-                                              style: GoogleFonts.inter(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
+                                            Expanded(
+                                              child: Text(
+                                                c.name,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                               ),
                                             ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              c.category,
-                                              style: GoogleFonts.inter(
-                                                fontSize: 12,
-                                                color: AppColors.textSecondary,
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.pendingBg,
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                'High Demand',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.pending,
+                                                ),
                                               ),
                                             ),
                                           ],
                                         ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.success.withAlpha(20),
-                                          borderRadius: BorderRadius.circular(6),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          c.category,
+                                          style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
                                         ),
-                                        child: Text(
-                                          'Active',
-                                          style: GoogleFonts.inter(
-                                            color: AppColors.success,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
+                                        const SizedBox(height: 6),
+                                        Text.rich(
+                                          TextSpan(
+                                            text: 'Earn up to ',
+                                            style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
+                                            children: [
+                                              TextSpan(
+                                                text: '₹${c.affiliatePayout.toStringAsFixed(0)}',
+                                                style: GoogleFonts.inter(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                  const Divider(height: 24),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Max Payout',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 11,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                          Text(
-                                            '₹${c.affiliatePayout.toStringAsFixed(0)}',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.primary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      ElevatedButton(
-                                        onPressed: () => context.push('/link-generator', extra: c),
-                                        child: const Text('Generate Link'),
-                                      ),
-                                    ],
-                                  ),
+                                  const Icon(Icons.chevron_right, color: AppColors.textMuted),
                                 ],
                               ),
                             ),
