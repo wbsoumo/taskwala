@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/empty_state.dart';
 
 class MyLinksScreen extends ConsumerStatefulWidget {
   const MyLinksScreen({super.key});
@@ -74,17 +76,12 @@ class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
             child: linksAsync.when(
               data: (links) {
                 if (links.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.link_off, size: 64, color: AppColors.textMuted),
-                        const SizedBox(height: 16),
-                        Text('No tracking links generated yet', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 6),
-                        Text('Generate links from Campaigns to start tracking.', style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12)),
-                      ],
-                    ),
+                  return TaskwalaEmptyState(
+                    icon: Icons.link_off_rounded,
+                    title: 'No Tracking Links Yet',
+                    message: 'Generate your first tracking link from available campaigns to start promoting and earning.',
+                    actionLabel: 'Browse Campaigns',
+                    onAction: () => context.go('/campaigns'),
                   );
                 }
 

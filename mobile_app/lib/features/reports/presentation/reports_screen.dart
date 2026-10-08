@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/empty_state.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -63,8 +64,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             child: conversionsAsync.when(
               data: (conversions) {
                 if (conversions.isEmpty) {
-                  return Center(
-                    child: Text('No conversion records found.', style: GoogleFonts.inter(color: AppColors.textMuted)),
+                  return const TaskwalaEmptyState(
+                    icon: Icons.assignment_turned_in_outlined,
+                    title: 'No Conversions Yet',
+                    message: 'Share your offer links to start generating lead conversions and earning commission.',
                   );
                 }
                 return ListView.builder(
