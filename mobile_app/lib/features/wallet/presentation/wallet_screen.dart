@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/empty_state.dart';
 
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
@@ -97,11 +98,10 @@ class WalletScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
 
                 wallet.transactions.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32.0),
-                          child: Text('No transactions recorded yet.', style: GoogleFonts.inter(color: AppColors.textMuted)),
-                        ),
+                    ? const TaskwalaEmptyState(
+                        icon: Icons.account_balance_wallet_outlined,
+                        title: 'No Transactions Yet',
+                        message: 'Your wallet transaction history and payout credits will appear here once approved.',
                       )
                     : ListView.builder(
                         shrinkWrap: true,
