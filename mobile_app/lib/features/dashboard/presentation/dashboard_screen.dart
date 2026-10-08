@@ -19,7 +19,15 @@ class DashboardScreen extends ConsumerWidget {
     final user = authState.user;
     final walletAsync = ref.watch(walletProvider);
     final campaignsAsync = ref.watch(campaignsProvider);
+    final clicksAsync = ref.watch(clickReportsProvider);
+    final conversionsAsync = ref.watch(conversionReportsProvider);
     final currencyFormatter = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+
+    final totalClicksCount = clicksAsync.asData?.value.length ?? 0;
+    final totalConversionsCount = conversionsAsync.asData?.value.length ?? 0;
+    final convRateVal = totalClicksCount > 0
+        ? (totalConversionsCount / totalClicksCount * 100).toStringAsFixed(1)
+        : '0.0';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -69,6 +77,8 @@ class DashboardScreen extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(walletProvider);
           ref.invalidate(campaignsProvider);
+          ref.invalidate(clickReportsProvider);
+          ref.invalidate(conversionReportsProvider);
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -171,21 +181,21 @@ class DashboardScreen extends ConsumerWidget {
               Row(
                 children: [
                   Expanded(
-                    child: _buildMiniMetricCard('Total Clicks', '1,245', Icons.touch_app_outlined)
+                    child: _buildMiniMetricCard('Total Clicks', '$totalClicksCount', Icons.touch_app_outlined)
                         .animate()
                         .fadeIn(delay: 100.ms, duration: 400.ms)
                         .scale(begin: const Offset(0.95, 0.95)),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: _buildMiniMetricCard('Conversions', '85', Icons.check_circle_outline)
+                    child: _buildMiniMetricCard('Conversions', '$totalConversionsCount', Icons.check_circle_outline)
                         .animate()
                         .fadeIn(delay: 200.ms, duration: 400.ms)
                         .scale(begin: const Offset(0.95, 0.95)),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: _buildMiniMetricCard('Conv. Rate', '6.91%', Icons.trending_up)
+                    child: _buildMiniMetricCard('Conv. Rate', '$convRateVal%', Icons.trending_up)
                         .animate()
                         .fadeIn(delay: 300.ms, duration: 400.ms)
                         .scale(begin: const Offset(0.95, 0.95)),
