@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -65,8 +67,8 @@ class DashboardScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          ref.refresh(walletProvider);
-          ref.refresh(campaignsProvider);
+          ref.invalidate(walletProvider);
+          ref.invalidate(campaignsProvider);
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -74,7 +76,7 @@ class DashboardScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Purple Header Balance Card matching Reference Image
+              // Purple Header Balance Card with Entrance Animation
               walletAsync.when(
                 data: (wallet) => Container(
                   width: double.infinity,
@@ -88,7 +90,7 @@ class DashboardScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.35),
+                        color: AppColors.primary.withValues(alpha: 0.35),
                         blurRadius: 16,
                         offset: const Offset(0, 8),
                       ),
@@ -142,7 +144,7 @@ class DashboardScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.12),
+                          color: Colors.white.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Row(
@@ -158,33 +160,42 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                ),
-                loading: () => Container(
-                  height: 160,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
+                ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOut),
+                loading: () => const SkeletonLoader(height: 160, borderRadius: 20),
                 error: (_, __) => const SizedBox(),
               ),
 
               const SizedBox(height: 20),
 
-              // 3 Mini Performance Metric Cards
+              // 3 Mini Performance Metric Cards with Staggered Entrance
               Row(
                 children: [
-                  Expanded(child: _buildMiniMetricCard('Total Clicks', '1,245', Icons.touch_app_outlined)),
+                  Expanded(
+                    child: _buildMiniMetricCard('Total Clicks', '1,245', Icons.touch_app_outlined)
+                        .animate()
+                        .fadeIn(delay: 100.ms, duration: 400.ms)
+                        .scale(begin: const Offset(0.95, 0.95)),
+                  ),
                   const SizedBox(width: 10),
-                  Expanded(child: _buildMiniMetricCard('Conversions', '85', Icons.check_circle_outline)),
+                  Expanded(
+                    child: _buildMiniMetricCard('Conversions', '85', Icons.check_circle_outline)
+                        .animate()
+                        .fadeIn(delay: 200.ms, duration: 400.ms)
+                        .scale(begin: const Offset(0.95, 0.95)),
+                  ),
                   const SizedBox(width: 10),
-                  Expanded(child: _buildMiniMetricCard('Conv. Rate', '6.91%', Icons.trending_up)),
+                  Expanded(
+                    child: _buildMiniMetricCard('Conv. Rate', '6.91%', Icons.trending_up)
+                        .animate()
+                        .fadeIn(delay: 300.ms, duration: 400.ms)
+                        .scale(begin: const Offset(0.95, 0.95)),
+                  ),
                 ],
               ),
 
               const SizedBox(height: 24),
 
-              // Quick Actions Row matching reference
+              // Quick Actions Row
               Text(
                 'Quick Actions',
                 style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
@@ -198,7 +209,7 @@ class DashboardScreen extends ConsumerWidget {
                   _buildQuickActionButton(context, Icons.bar_chart_rounded, 'Reports', () => context.go('/reports')),
                   _buildQuickActionButton(context, Icons.people_outline_rounded, 'Refer & Earn', () => context.push('/referral')),
                 ],
-              ),
+              ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
 
               const SizedBox(height: 24),
 
@@ -234,11 +245,11 @@ class DashboardScreen extends ConsumerWidget {
                       height: 160,
                       child: LineChart(
                         LineChartData(
-                          gridData: FlGridData(show: false),
+                          gridData: const FlGridData(show: false),
                           titlesData: FlTitlesData(
-                            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                             bottomTitles: AxisTitles(
                               sideTitles: SideTitles(
                                 showTitles: true,
@@ -268,7 +279,7 @@ class DashboardScreen extends ConsumerWidget {
                               color: AppColors.primary,
                               barWidth: 2.5,
                               isStrokeCapRound: true,
-                              dotData: FlDotData(show: false),
+                              dotData: const FlDotData(show: false),
                             ),
                             LineChartBarData(
                               spots: const [
@@ -284,7 +295,7 @@ class DashboardScreen extends ConsumerWidget {
                               color: AppColors.accent,
                               barWidth: 2,
                               isStrokeCapRound: true,
-                              dotData: FlDotData(show: false),
+                              dotData: const FlDotData(show: false),
                             ),
                           ],
                         ),
@@ -292,11 +303,11 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-              ),
+              ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
 
               const SizedBox(height: 24),
 
-              // Active Campaigns Preview
+              // Top Active Campaigns Preview
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -377,11 +388,16 @@ class DashboardScreen extends ConsumerWidget {
                             ),
                           ],
                         ),
-                      );
+                      ).animate().fadeIn(delay: (350 + index * 80).ms, duration: 350.ms);
                     },
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => Column(
+                  children: List.generate(3, (index) => const Padding(
+                    padding: EdgeInsets.only(bottom: 10.0),
+                    child: SkeletonLoader(height: 70, borderRadius: 14),
+                  )),
+                ),
                 error: (_, __) => const SizedBox(),
               ),
             ],
