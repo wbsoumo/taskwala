@@ -6,6 +6,7 @@ import '../../shared/providers/auth_provider.dart';
 import '../../shared/models/models.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
+import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/dashboard/presentation/main_shell_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/campaigns/presentation/campaigns_screen.dart';
@@ -57,16 +58,18 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/',
     refreshListenable: _AuthListenable(ref),
     redirect: (context, state) {
-      final isLoggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+      final isAuthRoute = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/register' ||
+          state.matchedLocation == '/forgot-password';
 
       final currentAuth = ref.read(authProvider);
       if (currentAuth.isLoading) return null;
 
-      if (!currentAuth.isAuthenticated && !isLoggingIn) {
+      if (!currentAuth.isAuthenticated && !isAuthRoute) {
         return '/login';
       }
 
-      if (currentAuth.isAuthenticated && isLoggingIn) {
+      if (currentAuth.isAuthenticated && isAuthRoute) {
         return '/';
       }
 
@@ -134,6 +137,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           child: const RegisterScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const ForgotPasswordScreen(),
         ),
       ),
       GoRoute(

@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Admin\TrackingController as AdminTrackingController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Tracking\RedirectController;
+use App\Http\Controllers\User\Auth\ForgotPasswordController as UserForgotPasswordController;
 use App\Http\Controllers\User\Auth\LoginController as UserLoginController;
 use App\Http\Controllers\User\Auth\RegisterController as UserRegisterController;
 use App\Http\Controllers\User\CampaignController as UserCampaignController;
@@ -109,6 +110,10 @@ Route::middleware(['web'])->group(function () {
     Route::get('/register', [UserRegisterController::class, 'showRegistrationForm'])->name('user.register');
     Route::post('/register', [UserRegisterController::class, 'register']);
     Route::post('/logout', [UserLoginController::class, 'logout'])->name('user.logout');
+    Route::get('/forgot-password', [UserForgotPasswordController::class, 'showLinkRequestForm'])->name('user.password.request');
+    Route::post('/forgot-password', [UserForgotPasswordController::class, 'sendResetOtp'])->name('user.password.email');
+    Route::get('/reset-password', [UserForgotPasswordController::class, 'showResetForm'])->name('user.password.reset');
+    Route::post('/reset-password', [UserForgotPasswordController::class, 'reset'])->name('user.password.update');
 
     Route::middleware(['auth.user'])->group(function () {
         Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');

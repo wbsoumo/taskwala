@@ -22,6 +22,12 @@
                     <p class="text-muted small">Sign in to your affiliate dashboard</p>
                 </div>
 
+                @if(session('status'))
+                    <div class="alert alert-success py-2 small">
+                        {{ session('status') }}
+                    </div>
+                @endif
+
                 @if($errors->any())
                     <div class="alert alert-danger py-2 small">
                         {{ $errors->first() }}
@@ -45,6 +51,7 @@
                             <input type="checkbox" class="custom-control-input" id="remember" name="remember">
                             <label class="custom-control-label small text-muted" for="remember">Remember me</label>
                         </div>
+                        <a href="{{ route('user.password.request') }}" class="text-primary small">Forgot Password?</a>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-block btn-lg font-weight-bold mt-4">Sign In</button>
