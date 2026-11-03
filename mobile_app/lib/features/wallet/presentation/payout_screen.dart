@@ -1,9 +1,16 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/bouncing_card.dart';
+import '../../../shared/widgets/animated_counter.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 
 class PayoutScreen extends ConsumerStatefulWidget {
   const PayoutScreen({super.key});
@@ -16,8 +23,10 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
   final _amountController = TextEditingController();
   final _upiController = TextEditingController();
   bool _isSubmitting = false;
+  bool _isSavingUpi = false;
   String? _message;
   bool _isSuccess = false;
+  double? _selectedPresetAmount;
 
   @override
   void dispose() {
@@ -30,21 +39,77 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
     final upi = _upiController.text.trim();
     if (upi.isEmpty) return;
 
+    setState(() => _isSavingUpi = true);
     final api = ref.read(apiClientProvider);
+
     try {
       final res = await api.post('/wallet/upi', data: {'upi_id': upi});
-      if (res.data['success'] == true && mounted) {
+      if (mounted) {
+        setState(() => _isSavingUpi = false);
+        final msg = res.data is Map ? (res.data['message'] ?? 'UPI ID updated successfully!') : 'UPI ID updated!';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('UPI ID updated successfully')),
+          SnackBar(
+            backgroundColor: AppColors.mint,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  msg.toString(),
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
         );
         ref.invalidate(walletProvider);
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSavingUpi = false);
+        String err = 'Failed to update UPI ID';
+        if (e is DioException && e.response?.data is Map) {
+          err = e.response?.data['message'] ?? err;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
+            content: Text(err, style: GoogleFonts.plusJakartaSans(color: Colors.white)),
+          ),
+        );
+      }
+    }
   }
 
-  void _requestPayout() async {
-    final amount = double.tryParse(_amountController.text) ?? 0.0;
-    if (amount <= 0) return;
+  void _requestPayout(double availableBalance, double minThreshold) async {
+    final amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
+
+    if (amount <= 0) {
+      setState(() {
+        _isSuccess = false;
+        _message = 'Please enter a valid withdrawal amount.';
+      });
+      return;
+    }
+
+    if (amount < minThreshold) {
+      setState(() {
+        _isSuccess = false;
+        _message = 'The minimum withdrawal threshold is ₹${minThreshold.toStringAsFixed(0)}. Please enter at least ₹${minThreshold.toStringAsFixed(0)}.';
+      });
+      return;
+    }
+
+    if (amount > availableBalance) {
+      setState(() {
+        _isSuccess = false;
+        _message = 'Requested amount exceeds your available balance of ₹${availableBalance.toStringAsFixed(2)}.';
+      });
+      return;
+    }
 
     setState(() {
       _isSubmitting = true;
@@ -55,26 +120,32 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
       final api = ref.read(apiClientProvider);
       final res = await api.post('/wallet/payout', data: {'amount': amount});
 
-      if (res.data['success'] == true) {
+      if (mounted) {
         setState(() {
           _isSubmitting = false;
           _isSuccess = true;
-          _message = 'Payout request of ₹${amount.toStringAsFixed(0)} submitted successfully!';
+          _message = res.data is Map && res.data['message'] != null
+              ? res.data['message']
+              : 'Payout request of ₹${amount.toStringAsFixed(2)} submitted successfully!';
+          _amountController.clear();
+          _selectedPresetAmount = null;
         });
+
         ref.invalidate(walletProvider);
-      } else {
+        ref.invalidate(payoutRequestsProvider);
+      }
+    } catch (e) {
+      if (mounted) {
+        String errMsg = 'Failed to submit payout request.';
+        if (e is DioException && e.response?.data is Map) {
+          errMsg = e.response?.data['message'] ?? errMsg;
+        }
         setState(() {
           _isSubmitting = false;
           _isSuccess = false;
-          _message = res.data['message'] ?? 'Failed to submit payout request';
+          _message = errMsg;
         });
       }
-    } catch (e) {
-      setState(() {
-        _isSubmitting = false;
-        _isSuccess = false;
-        _message = 'Network error during payout request';
-      });
     }
   }
 
@@ -87,7 +158,48 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
-        title: Text('UPI & Payouts', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18)),
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => context.pop(),
+        ),
+        title: Text(
+          'Withdraw Funds',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        actions: [
+          BouncingCard(
+            onTap: () => context.push('/withdraw/status'),
+            child: Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceSecondary,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.history_rounded, size: 16, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'History',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       body: walletAsync.when(
         data: (wallet) {
@@ -95,21 +207,202 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
             _upiController.text = wallet.upiId!;
           }
 
+          final minThreshold = wallet.minWithdrawalThreshold;
+          final availableBalance = wallet.availableBalance;
+          final isEligible = availableBalance >= minThreshold;
+
+          // Preset amounts based on min threshold
+          final presetList = <double>[
+            minThreshold,
+            minThreshold * 2,
+            minThreshold * 4,
+            availableBalance,
+          ].where((amt) => amt > 0).toSet().toList();
+
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 60),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Saved UPI Card matching reference UI
-                Text('UPI Details', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold)),
+                // Available Balance Hero Banner
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.heroGradient,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: AppShadows.heroCard,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF00F0FF),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Withdrawable Balance',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.flash_on_rounded, size: 13, color: Colors.amberAccent),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'Instant UPI',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      AnimatedCounter(
+                        value: availableBalance,
+                        prefix: '₹',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: Colors.white,
+                          fontSize: 34,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isEligible ? Icons.verified_rounded : Icons.info_outline_rounded,
+                              size: 15,
+                              color: isEligible ? const Color(0xFF00F0FF) : Colors.amberAccent,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                isEligible
+                                    ? '✓ Minimum threshold ₹${minThreshold.toStringAsFixed(0)} met. Ready for withdrawal.'
+                                    : 'Minimum withdrawal threshold set by admin is ₹${minThreshold.toStringAsFixed(0)}. (Need ₹${(minThreshold - availableBalance).toStringAsFixed(0)} more)',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  color: Colors.white.withValues(alpha: 0.95),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.06, end: 0),
+
+                const SizedBox(height: 20),
+
+                // Fast Track Status Tracker Button
+                BouncingCard(
+                  onTap: () => context.push('/withdraw/status'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.border),
+                      boxShadow: AppShadows.soft,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.skyBg,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.receipt_long_rounded, color: AppColors.sky, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Track Withdrawal Status',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Check live settlement status, UTR numbers & history',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+                      ],
+                    ),
+                  ),
+                ).animate().fadeIn(delay: 50.ms, duration: 300.ms),
+
+                const SizedBox(height: 20),
+
+                // UPI Destination Card
+                Text(
+                  'UPI Destination',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: 8),
 
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: AppColors.border),
+                    boxShadow: AppShadows.soft,
                   ),
                   child: Column(
                     children: [
@@ -118,10 +411,18 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: AppColors.successBg,
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppColors.mintBg,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: AppColors.mint.withValues(alpha: 0.2),
+                                width: 1,
+                              ),
                             ),
-                            child: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.success, size: 22),
+                            child: const Icon(
+                              Icons.account_balance_rounded,
+                              color: AppColors.mint,
+                              size: 22,
+                            ),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
@@ -129,159 +430,339 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  wallet.upiId ?? 'soumojit@upi',
-                                  style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+                                  wallet.upiId?.isNotEmpty == true ? wallet.upiId! : 'No UPI Configured',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
                                 const SizedBox(height: 2),
                                 Row(
                                   children: [
-                                    const Icon(Icons.check_circle, size: 12, color: AppColors.success),
+                                    Icon(
+                                      wallet.upiId?.isNotEmpty == true ? Icons.verified_rounded : Icons.info_outline_rounded,
+                                      size: 13,
+                                      color: wallet.upiId?.isNotEmpty == true ? AppColors.mint : AppColors.amber,
+                                    ),
                                     const SizedBox(width: 4),
-                                    Text('Verified', style: GoogleFonts.inter(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.bold)),
+                                    Text(
+                                      wallet.upiId?.isNotEmpty == true
+                                          ? 'Verified for Instant Transfer'
+                                          : 'Save valid UPI ID below',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: wallet.upiId?.isNotEmpty == true ? AppColors.mint : AppColors.amber,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ],
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.textSecondary),
-                            onPressed: _saveUpi,
+                          BouncingCard(
+                            onTap: _isSavingUpi ? null : _saveUpi,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: _isSavingUpi
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                                    )
+                                  : Text(
+                                      'Save',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
                       TextField(
                         controller: _upiController,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 14),
                         decoration: InputDecoration(
-                          hintText: 'Enter UPI ID (e.g. name@upi)',
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                          hintText: 'Enter UPI ID (e.g. mobile@upi or name@okaxis)',
+                          prefixIcon: const Icon(Icons.alternate_email_rounded, size: 18, color: AppColors.textMuted),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: AppColors.border),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
+                ).animate().fadeIn(delay: 100.ms, duration: 300.ms),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
 
-                // Payout Settings & Request Card matching reference UI
+                // Request Withdrawal Form Card
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(22),
                     border: Border.all(color: AppColors.border),
+                    boxShadow: AppShadows.soft,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Payout Settings', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text('Minimum withdrawal amount: ₹500', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _amountController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          hintText: 'Enter amount to withdraw',
-                          prefixIcon: const Icon(Icons.currency_rupee, size: 18),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Enter Amount',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.mintBg,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '0% Transfer Fee',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.mint,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Quick preset amount pills
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        child: Row(
+                          children: presetList.map((amt) {
+                            final isSelected = _selectedPresetAmount == amt;
+                            final isMax = amt == availableBalance;
+                            final label = isMax ? 'Max (₹${amt.toStringAsFixed(0)})' : '₹${amt.toStringAsFixed(0)}';
+
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: BouncingCard(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedPresetAmount = amt;
+                                    _amountController.text = amt.toStringAsFixed(0);
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? AppColors.primary : AppColors.surfaceSecondary,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isSelected ? AppColors.primary : AppColors.border,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    label,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: isSelected ? Colors.white : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
                         ),
                       ),
+
                       const SizedBox(height: 16),
-                      if (_message != null) ...[
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: _isSuccess ? AppColors.successBg : AppColors.dangerBg,
-                            borderRadius: BorderRadius.circular(8),
+
+                      TextField(
+                        controller: _amountController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold),
+                        decoration: InputDecoration(
+                          hintText: 'Min ₹${minThreshold.toStringAsFixed(0)}',
+                          prefixIcon: const Icon(Icons.currency_rupee_rounded, size: 20, color: AppColors.primary),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          suffixIcon: TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _amountController.text = availableBalance.toStringAsFixed(0);
+                                _selectedPresetAmount = availableBalance;
+                              });
+                            },
+                            child: Text(
+                              'MAX',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                                color: AppColors.primary,
+                              ),
+                            ),
                           ),
-                          child: Text(_message!, style: GoogleFonts.inter(color: _isSuccess ? AppColors.success : AppColors.danger, fontSize: 12)),
                         ),
-                        const SizedBox(height: 12),
-                      ],
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _isSubmitting || wallet.availableBalance <= 0 ? null : _requestPayout,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Status or Error Alert Message
+                      if (_message != null) ...[
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: _isSuccess ? AppColors.mintBg : AppColors.dangerBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: (_isSuccess ? AppColors.mint : AppColors.danger).withValues(alpha: 0.3),
+                            ),
                           ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    _isSuccess ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                                    color: _isSuccess ? AppColors.mint : AppColors.danger,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _message!,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: _isSuccess ? AppColors.mint : AppColors.danger,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_isSuccess) ...[
+                                const SizedBox(height: 10),
+                                BouncingCard(
+                                  onTap: () => context.push('/withdraw/status'),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.mint,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'View in Tracking Status',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Submit Withdrawal Button
+                      BouncingCard(
+                        onTap: _isSubmitting
+                            ? null
+                            : () => _requestPayout(availableBalance, minThreshold),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            gradient: isEligible ? AppColors.primaryGradient : null,
+                            color: !isEligible ? AppColors.border : null,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: isEligible
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(alpha: 0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          alignment: Alignment.center,
                           child: _isSubmitting
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : Text('Request Withdrawal', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Submit Withdrawal Request',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
                     ],
                   ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Payout History List matching reference UI
-                Text('Payout History', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-
-                _buildPayoutHistoryItem('₹1,500', '10 Oct 2026', 'Paid', AppColors.success, AppColors.successBg),
-                _buildPayoutHistoryItem('₹500', '01 Oct 2026', 'Processing', AppColors.pending, AppColors.pendingBg),
-                _buildPayoutHistoryItem('₹800', '15 Sep 2026', 'Paid', AppColors.success, AppColors.successBg),
-                _buildPayoutHistoryItem('₹600', '01 Sep 2026', 'Failed', AppColors.danger, AppColors.dangerBg),
+                ).animate().fadeIn(delay: 150.ms, duration: 300.ms),
               ],
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error: $err')),
-      ),
-    );
-  }
-
-  Widget _buildPayoutHistoryItem(String amount, String date, String status, Color statusColor, Color statusBg) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text('₹', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppColors.primary)),
+        loading: () => const Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            children: [
+              SkeletonLoader(height: 160, borderRadius: 24),
+              SizedBox(height: 16),
+              SkeletonLoader(height: 120, borderRadius: 20),
+              SizedBox(height: 16),
+              SkeletonLoader(height: 220, borderRadius: 22),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(amount, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
-                Text(date, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted)),
-              ],
-            ),
+        ),
+        error: (e, _) => Center(
+          child: Text(
+            'Failed to load wallet information',
+            style: GoogleFonts.plusJakartaSans(color: AppColors.danger),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: statusBg,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              status,
-              style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

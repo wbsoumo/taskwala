@@ -23,6 +23,10 @@ class AffiliateLink extends Model
         'conversion_count',
     ];
 
+    protected $appends = [
+        'public_url',
+    ];
+
     protected function casts(): array
     {
         return [

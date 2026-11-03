@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,14 +14,45 @@ import '../../features/links/presentation/my_links_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/wallet/presentation/wallet_screen.dart';
 import '../../features/wallet/presentation/payout_screen.dart';
+import '../../features/wallet/presentation/withdrawal_status_screen.dart';
 import '../../features/referrals/presentation/referral_dashboard_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/support/presentation/support_screen.dart';
 
-final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+/// Helper for silky smooth slide & fade page transitions
+CustomTransitionPage<T> _buildSmoothPage<T>({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<T>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 260),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curvedAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
 
+      return FadeTransition(
+        opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curvedAnimation),
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.04),
+            end: Offset.zero,
+          ).animate(curvedAnimation),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     refreshListenable: _AuthListenable(ref),
@@ -49,63 +80,143 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/',
-            builder: (context, state) => const DashboardScreen(),
+            pageBuilder: (context, state) => _buildSmoothPage(
+              context: context,
+              state: state,
+              child: const DashboardScreen(),
+            ),
           ),
           GoRoute(
             path: '/campaigns',
-            builder: (context, state) => const CampaignsScreen(),
+            pageBuilder: (context, state) => _buildSmoothPage(
+              context: context,
+              state: state,
+              child: const CampaignsScreen(),
+            ),
           ),
           GoRoute(
             path: '/links',
-            builder: (context, state) => const MyLinksScreen(),
+            pageBuilder: (context, state) => _buildSmoothPage(
+              context: context,
+              state: state,
+              child: const MyLinksScreen(),
+            ),
           ),
           GoRoute(
             path: '/reports',
-            builder: (context, state) => const ReportsScreen(),
+            pageBuilder: (context, state) => _buildSmoothPage(
+              context: context,
+              state: state,
+              child: const ReportsScreen(),
+            ),
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) => const ProfileScreen(),
+            pageBuilder: (context, state) => _buildSmoothPage(
+              context: context,
+              state: state,
+              child: const ProfileScreen(),
+            ),
           ),
         ],
       ),
       GoRoute(
         path: '/login',
-        builder: (context, state) => const LoginScreen(),
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const LoginScreen(),
+        ),
       ),
       GoRoute(
         path: '/register',
-        builder: (context, state) => const RegisterScreen(),
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const RegisterScreen(),
+        ),
       ),
       GoRoute(
         path: '/link-generator',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final campaign = state.extra as Campaign?;
           if (campaign == null) {
-            return const CampaignsScreen();
+            return _buildSmoothPage(
+              context: context,
+              state: state,
+              child: const CampaignsScreen(),
+            );
           }
-          return LinkGeneratorScreen(campaign: campaign);
+          return _buildSmoothPage(
+            context: context,
+            state: state,
+            child: LinkGeneratorScreen(campaign: campaign),
+          );
         },
       ),
       GoRoute(
         path: '/wallet',
-        builder: (context, state) => const WalletScreen(),
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const WalletScreen(),
+        ),
       ),
       GoRoute(
         path: '/payout',
-        builder: (context, state) => const PayoutScreen(),
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const PayoutScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/withdraw',
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const PayoutScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/withdraw/status',
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const WithdrawalStatusScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/withdrawals',
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const WithdrawalStatusScreen(),
+        ),
       ),
       GoRoute(
         path: '/referral',
-        builder: (context, state) => const ReferralDashboardScreen(),
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const ReferralDashboardScreen(),
+        ),
       ),
       GoRoute(
         path: '/notifications',
-        builder: (context, state) => const NotificationsScreen(),
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const NotificationsScreen(),
+        ),
       ),
       GoRoute(
         path: '/support',
-        builder: (context, state) => const SupportScreen(),
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const SupportScreen(),
+        ),
       ),
     ],
   );

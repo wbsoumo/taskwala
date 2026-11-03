@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+
 import '../../../shared/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/bouncing_card.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -38,10 +42,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (!_agreedTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please accept Terms & Conditions')),
+        SnackBar(
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text(
+            'Please accept the Terms & Conditions',
+            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+        ),
       );
       return;
     }
+    HapticFeedback.lightImpact();
 
     final success = await ref.read(authProvider.notifier).register(
           name: _nameController.text.trim(),
@@ -66,50 +79,47 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
           onPressed: () => context.go('/login'),
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Create Account',
+                'Create Partner Account',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
                 ),
-              ),
+              ).animate().fadeIn(duration: 350.ms),
               const SizedBox(height: 4),
               Text(
-                'Join and start earning today',
+                'Join Taskwala partner network & earn commissions',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   color: AppColors.textSecondary,
                 ),
-              ),
+              ).animate().fadeIn(delay: 50.ms),
               const SizedBox(height: 24),
 
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: AppColors.border),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color.fromRGBO(0, 0, 0, 0.03),
-                      blurRadius: 16,
-                      offset: Offset(0, 6),
-                    ),
-                  ],
+                  boxShadow: AppShadows.card,
                 ),
                 child: Form(
                   key: _formKey,
@@ -121,16 +131,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: AppColors.dangerBg,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.danger.withOpacity(0.3)),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
                           ),
                           child: Text(
                             authState.error!,
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.plusJakartaSans(
                               color: AppColors.danger,
                               fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -140,10 +150,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       _buildFieldLabel('Full Name'),
                       TextFormField(
                         controller: _nameController,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 14),
                         decoration: const InputDecoration(
-                          hintText: 'Enter your full name',
+                          hintText: 'e.g. Soumojit Mukherjee',
+                          prefixIcon: Icon(Icons.person_outline_rounded, size: 20, color: AppColors.textMuted),
                         ),
-                        validator: (val) => val == null || val.isEmpty ? 'Enter full name' : null,
+                        validator: (val) => val == null || val.isEmpty ? 'Enter your full name' : null,
                       ),
                       const SizedBox(height: 16),
 
@@ -151,22 +163,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       TextFormField(
                         controller: _mobileController,
                         keyboardType: TextInputType.phone,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 14),
                         decoration: InputDecoration(
-                          hintText: 'Enter mobile number',
+                          hintText: '10-digit mobile number',
                           prefixIcon: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             alignment: Alignment.centerLeft,
                             width: 60,
                             child: Text(
                               '+91',
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.bold,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary,
                               ),
                             ),
                           ),
                         ),
-                        validator: (val) => val == null || val.length < 10 ? 'Enter valid mobile' : null,
+                        validator: (val) => val == null || val.length < 10 ? 'Enter valid 10-digit mobile' : null,
                       ),
                       const SizedBox(height: 16),
 
@@ -174,8 +187,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 14),
                         decoration: const InputDecoration(
-                          hintText: 'Enter your email address',
+                          hintText: 'e.g. you@example.com',
+                          prefixIcon: Icon(Icons.email_outlined, size: 20, color: AppColors.textMuted),
                         ),
                         validator: (val) => val == null || !val.contains('@') ? 'Enter valid email' : null,
                       ),
@@ -185,8 +200,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 14),
                         decoration: InputDecoration(
-                          hintText: 'Create a password',
+                          hintText: 'Create a strong password',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20, color: AppColors.textMuted),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -207,11 +224,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       _buildFieldLabel('Referral Code (Optional)'),
                       TextFormField(
                         controller: _referralController,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 14),
                         decoration: const InputDecoration(
-                          hintText: 'Enter referral code',
+                          hintText: 'Enter friend referral code if any',
+                          prefixIcon: Icon(Icons.stars_rounded, size: 20, color: AppColors.lavender),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 18),
 
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,25 +241,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             child: Checkbox(
                               value: _agreedTerms,
                               activeColor: AppColors.primary,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                               onChanged: (val) => setState(() => _agreedTerms = val ?? false),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Text.rich(
                               TextSpan(
-                                text: 'I agree to ',
-                                style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
+                                text: 'I agree to the ',
+                                style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppColors.textSecondary),
                                 children: [
                                   TextSpan(
                                     text: 'Terms & Conditions',
-                                    style: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.bold),
+                                    style: GoogleFonts.plusJakartaSans(color: AppColors.primary, fontWeight: FontWeight.w700),
                                   ),
                                   const TextSpan(text: ' and '),
                                   TextSpan(
                                     text: 'Privacy Policy',
-                                    style: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.bold),
+                                    style: GoogleFonts.plusJakartaSans(color: AppColors.primary, fontWeight: FontWeight.w700),
                                   ),
                                 ],
                               ),
@@ -250,44 +269,38 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.primaryGradientStart, AppColors.primaryGradientEnd],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                      BouncingCard(
+                        onTap: authState.isLoading ? null : _submit,
+                        child: Container(
+                          height: 52,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppColors.primaryGradientStart, AppColors.primaryGradientEnd],
                             ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: authState.isLoading ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.35),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
                           ),
+                          alignment: Alignment.center,
                           child: authState.isLoading
                               ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
+                                  height: 22,
+                                  width: 22,
                                   child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                                    strokeWidth: 2.5,
                                     color: Colors.white,
                                   ),
                                 )
                               : Text(
-                                  'Create Account',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                  'Create Partner Account',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
                                     color: Colors.white,
                                   ),
                                 ),
@@ -296,6 +309,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ],
                   ),
                 ),
+              ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
+
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Already have an account? ',
+                    style: GoogleFonts.plusJakartaSans(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.go('/login'),
+                    child: Text(
+                      'Login',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
             ],
@@ -310,9 +345,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       padding: const EdgeInsets.only(bottom: 6.0),
       child: Text(
         label,
-        style: GoogleFonts.inter(
+        style: GoogleFonts.plusJakartaSans(
           fontSize: 12,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
       ),

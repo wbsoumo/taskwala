@@ -26,6 +26,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/wallet', [WalletController::class, 'index']);
         Route::post('/wallet/upi', [WalletController::class, 'updateUpi']);
         Route::post('/wallet/payout', [WalletController::class, 'requestPayout']);
+        Route::get('/wallet/payout-requests', [WalletController::class, 'payoutRequests']);
 
         Route::get('/reports/clicks', [\App\Http\Controllers\Api\V1\ReportController::class, 'clicks']);
         Route::get('/reports/conversions', [\App\Http\Controllers\Api\V1\ReportController::class, 'conversions']);

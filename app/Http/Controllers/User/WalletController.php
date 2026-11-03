@@ -46,12 +46,18 @@ class WalletController extends Controller
         }
 
         $availableBalance = (float) ($user->wallet->balance ?? 0.00);
+        $minThreshold = (float) \App\Models\Setting::get('min_withdrawal_threshold', 500.00);
+
+        if ($availableBalance < $minThreshold) {
+            return redirect()->back()
+                ->withErrors(['amount' => 'Minimum withdrawal threshold set by admin is ₹' . number_format($minThreshold, 2) . '. Your available balance is ₹' . number_format($availableBalance, 2) . '.']);
+        }
 
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:1', "max:{$availableBalance}"],
+            'amount' => ['required', 'numeric', "min:{$minThreshold}", "max:{$availableBalance}"],
         ], [
             'amount.max' => 'You cannot request more than your available wallet balance of ₹' . number_format($availableBalance, 2),
-            'amount.min' => 'Minimum payout request amount is ₹1.00',
+            'amount.min' => 'Minimum payout request amount set by admin is ₹' . number_format($minThreshold, 2),
         ]);
 
         $requestedAmount = (float) $validated['amount'];

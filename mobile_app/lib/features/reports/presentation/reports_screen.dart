@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+
 import '../../../shared/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/category_badge.dart';
+import '../../../shared/widgets/bouncing_card.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -24,34 +29,79 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
-        title: Text('Conversions', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18)),
+        scrolledUnderElevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Conversions & Analytics',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Text(
+              'Track lead conversion statuses & payouts in real-time',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
-          // Filter Chips (All, Pending, Approved) matching reference UI
+          // Filter Chips (All, Pending, Approved, Rejected)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: AppColors.surface,
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              border: Border(
+                bottom: BorderSide(color: AppColors.borderSubtle, width: 1),
+              ),
+            ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               child: Row(
-                children: ['All (85)', 'Pending (12)', 'Approved (53)', 'Rejected (20)'].map((filter) {
-                  final label = filter.split(' ')[0];
-                  final isSelected = _selectedFilter == label;
+                children: ['All', 'Approved', 'Pending', 'Rejected'].map((filter) {
+                  final isSelected = _selectedFilter == filter;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8.0),
-                    child: ChoiceChip(
-                      label: Text(filter),
-                      selected: isSelected,
-                      selectedColor: AppColors.primary,
-                      backgroundColor: AppColors.background,
-                      labelStyle: GoogleFonts.inter(
-                        color: isSelected ? Colors.white : AppColors.textSecondary,
-                        fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    child: BouncingCard(
+                      onTap: () => setState(() => _selectedFilter = filter),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primary : AppColors.surfaceSecondary,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected ? AppColors.primary : AppColors.border,
+                            width: 1,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.28),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Text(
+                          filter,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: isSelected ? Colors.white : AppColors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                          ),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      onSelected: (_) => setState(() => _selectedFilter = label),
                     ),
                   );
                 }).toList(),
@@ -63,28 +113,35 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           Expanded(
             child: conversionsAsync.when(
               data: (conversions) {
-                if (conversions.isEmpty) {
+                final filtered = conversions.where((c) {
+                  if (_selectedFilter == 'All') return true;
+                  return c.status.toLowerCase().contains(_selectedFilter.toLowerCase());
+                }).toList();
+
+                if (filtered.isEmpty) {
                   return const TaskwalaEmptyState(
-                    icon: Icons.assignment_turned_in_outlined,
-                    title: 'No Conversions Yet',
-                    message: 'Share your offer links to start generating lead conversions and earning commission.',
+                    icon: Icons.assignment_turned_in_rounded,
+                    title: 'No Conversions Found',
+                    message: 'Share your offer links to generate customer leads and track commissions here.',
                   );
                 }
+
                 return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: conversions.length,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  itemCount: filtered.length,
                   itemBuilder: (context, index) {
-                    final c = conversions[index];
-                    final isApproved = c.status.toLowerCase() == 'approved';
-                    final isPending = c.status.toLowerCase() == 'pending';
+                    final c = filtered[index];
+                    final catColors = AppColors.getCategoryColors(c.campaignName);
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: AppColors.border),
+                        boxShadow: AppShadows.soft,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,76 +149,122 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           Row(
                             children: [
                               Container(
-                                width: 40,
-                                height: 40,
+                                width: 46,
+                                height: 46,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryLight,
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: catColors.bg,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: catColors.fg.withValues(alpha: 0.2),
+                                    width: 1,
+                                  ),
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
-                                  c.campaignName[0],
-                                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                  c.campaignName.isNotEmpty ? c.campaignName[0] : 'C',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: catColors.fg,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 14),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(c.campaignName, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
-                                    const SizedBox(height: 2),
                                     Text(
-                                      '₹${c.customerPayout.toStringAsFixed(0)} (Customer) • ₹${c.commission.toStringAsFixed(0)} (You)',
-                                      style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
+                                      c.campaignName,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Earned: ',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 11,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                        Text(
+                                          '₹${c.commission.toStringAsFixed(0)}',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.mint,
+                                          ),
+                                        ),
+                                        Text(
+                                          ' • Customer: ₹${c.customerPayout.toStringAsFixed(0)}',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 11,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: isApproved
-                                      ? AppColors.successBg
-                                      : (isPending ? AppColors.pendingBg : AppColors.dangerBg),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  c.status.toUpperCase(),
-                                  style: GoogleFonts.inter(
-                                    color: isApproved
-                                        ? AppColors.success
-                                        : (isPending ? AppColors.pending : AppColors.danger),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
+                              StatusBadge(status: c.status),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Ref: ${c.referenceId}',
-                                  style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
-                                  overflow: TextOverflow.ellipsis,
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Ref: ${c.referenceId}',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(c.createdAt, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted)),
-                            ],
+                                const SizedBox(width: 8),
+                                Text(
+                                  c.createdAt,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    );
+                    ).animate().fadeIn(delay: (index * 40).ms, duration: 300.ms).slideY(begin: 0.05, end: 0);
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text('Failed to load conversions: $err')),
+              loading: () => ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: 4,
+                itemBuilder: (_, __) => const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: SkeletonLoader(height: 110, borderRadius: 20),
+                ),
+              ),
+              error: (err, _) => Center(
+                child: Text('Failed to load conversions: $err', style: GoogleFonts.plusJakartaSans(color: AppColors.danger)),
+              ),
             ),
           ),
         ],

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_theme.dart';
 
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final double borderRadius;
   final BorderSide? border;
+  final List<BoxShadow>? shadows;
+  final Color? backgroundColor;
 
   const GlassCard({
     super.key,
@@ -12,6 +15,8 @@ class GlassCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(16),
     this.borderRadius = 20,
     this.border,
+    this.shadows,
+    this.backgroundColor,
   });
 
   @override
@@ -19,19 +24,13 @@ class GlassCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
+        color: backgroundColor ?? AppColors.surface,
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(
-          color: border?.color ?? const Color(0xFFEBEFF6),
+          color: border?.color ?? AppColors.border,
           width: border?.width ?? 1,
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color.fromRGBO(91, 77, 255, 0.05),
-            blurRadius: 16,
-            offset: Offset(0, 6),
-          ),
-        ],
+        boxShadow: shadows ?? AppShadows.card,
       ),
       child: child,
     );
@@ -42,34 +41,95 @@ class VibrantGradientCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final double borderRadius;
+  final List<Color>? gradientColors;
+  final bool showAmbientGlow;
 
   const VibrantGradientCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(20),
-    this.borderRadius = 20,
+    this.padding = const EdgeInsets.all(22),
+    this.borderRadius = 24,
+    this.gradientColors,
+    this.showAmbientGlow = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = gradientColors ?? [
+      AppColors.primaryGradientStart,
+      AppColors.primaryGradientEnd,
+    ];
+
     return Container(
-      padding: padding,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6C5CE7), Color(0xFF4834D4)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color.fromRGBO(91, 77, 255, 0.35),
-            blurRadius: 20,
-            offset: Offset(0, 8),
+            color: colors.first.withValues(alpha: 0.35),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: child,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Stack(
+          children: [
+            // Background gradient
+            Container(
+              padding: padding,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: colors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: child,
+            ),
+
+            // Top-right subtle ambient light orb
+            if (showAmbientGlow)
+              Positioned(
+                top: -30,
+                right: -30,
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        Colors.white.withValues(alpha: 0.22),
+                        Colors.white.withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+            // Bottom-left soft glow
+            if (showAmbientGlow)
+              Positioned(
+                bottom: -40,
+                left: 20,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        Colors.white.withValues(alpha: 0.12),
+                        Colors.white.withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -23,10 +23,13 @@ class WalletController extends Controller
             $payoutRequests = PayoutRequest::where('user_id', $user->id)->latest()->paginate(10);
         }
 
+        $minThreshold = (float) \App\Models\Setting::get('min_withdrawal_threshold', 500.00);
+
         return response()->json([
             'wallet' => $user->wallet,
             'transactions' => $transactions,
             'payout_requests' => $payoutRequests,
+            'min_withdrawal_threshold' => $minThreshold,
         ]);
     }
 
@@ -51,9 +54,37 @@ class WalletController extends Controller
         );
 
         return response()->json([
+            'success' => true,
             'message' => 'UPI ID updated successfully.',
             'upi_id' => $user->upi_id,
             'upi_holder_name' => $user->upi_holder_name,
+        ]);
+    }
+
+    public function payoutRequests(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $payoutRequests = collect();
+        if (Schema::hasTable('payout_requests')) {
+            $query = PayoutRequest::where('user_id', $user->id);
+            if ($request->filled('status')) {
+                $status = strtolower($request->status);
+                if (in_array($status, ['pending', 'completed', 'approved', 'rejected'])) {
+                    if ($status === 'completed' || $status === 'approved') {
+                        $query->whereIn('status', ['completed', 'approved']);
+                    } else {
+                        $query->where('status', $status);
+                    }
+                }
+            }
+            $payoutRequests = $query->latest()->paginate(25);
+        }
+
+        $minThreshold = (float) \App\Models\Setting::get('min_withdrawal_threshold', 500.00);
+
+        return response()->json([
+            'data' => $payoutRequests,
+            'min_withdrawal_threshold' => $minThreshold,
         ]);
     }
 
@@ -64,14 +95,27 @@ class WalletController extends Controller
 
         if (empty($user->upi_id)) {
             return response()->json([
+                'success' => false,
                 'message' => 'Please configure your valid UPI ID before requesting a payout settlement.',
             ], 422);
         }
 
         $availableBalance = (float) ($user->wallet->balance ?? 0.00);
+        $minThreshold = (float) \App\Models\Setting::get('min_withdrawal_threshold', 500.00);
+
+        if ($availableBalance < $minThreshold) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Minimum withdrawal threshold set by admin is ₹' . number_format($minThreshold, 2) . '. Your available balance is ₹' . number_format($availableBalance, 2) . '.',
+                'min_threshold' => $minThreshold,
+            ], 422);
+        }
 
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:1', "max:{$availableBalance}"],
+            'amount' => ['required', 'numeric', "min:{$minThreshold}", "max:{$availableBalance}"],
+        ], [
+            'amount.min' => 'Minimum withdrawal request amount is ₹' . number_format($minThreshold, 2) . '.',
+            'amount.max' => 'You cannot withdraw more than your available wallet balance of ₹' . number_format($availableBalance, 2) . '.',
         ]);
 
         $requestedAmount = (float) $validated['amount'];
@@ -80,11 +124,17 @@ class WalletController extends Controller
             $wallet = \App\Models\Wallet::where('user_id', $user->id)->lockForUpdate()->first();
 
             if ((float) $wallet->balance < $requestedAmount) {
-                return response()->json(['message' => 'Insufficient wallet balance.'], 422);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Insufficient wallet balance.'
+                ], 422);
             }
 
             if (!Schema::hasTable('payout_requests')) {
-                return response()->json(['message' => 'Payout requests database table missing on server.'], 500);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payout requests database table missing on server.'
+                ], 500);
             }
 
             $wallet->balance -= $requestedAmount;
@@ -111,8 +161,10 @@ class WalletController extends Controller
             ]);
 
             return response()->json([
+                'success' => true,
                 'message' => 'Payout request submitted successfully.',
                 'payout_request' => $payoutRequest,
+                'new_balance' => (float) $wallet->balance,
             ], 201);
         });
     }

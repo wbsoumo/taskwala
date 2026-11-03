@@ -27,6 +27,12 @@
                     </div>
 
                     <div class="form-group">
+                        <label class="font-weight-bold text-success"><i class="fas fa-wallet mr-1"></i> Minimum Withdrawal Threshold (₹)</label>
+                        <input type="number" step="0.01" min="1" name="min_withdrawal_threshold" class="form-control" value="{{ $settings['min_withdrawal_threshold'] ?? '500.00' }}" required>
+                        <small class="form-text text-muted">Affiliates & users must have at least this available balance before they can submit a withdrawal request.</small>
+                    </div>
+
+                    <div class="form-group">
                         <label>Enable Postback IP Whitelisting</label>
                         <select name="postback_ip_whitelist_enabled" class="form-control">
                             <option value="1" {{ ($settings['postback_ip_whitelist_enabled'] ?? '1') == '1' ? 'selected' : '' }}>Enabled (Strict Security)</option>

@@ -4,7 +4,6 @@ class SecureStorageService {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   static const String _keyToken = 'auth_token';
-  static const String _keyUser = 'user_data';
 
   Future<void> saveToken(String token) async {
     await _storage.write(key: _keyToken, value: token);

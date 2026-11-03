@@ -1,3 +1,17 @@
+int _parseInt(dynamic val) {
+  if (val == null) return 0;
+  if (val is int) return val;
+  if (val is num) return val.toInt();
+  return int.tryParse(val.toString()) ?? 0;
+}
+
+double _parseDouble(dynamic val) {
+  if (val == null) return 0.0;
+  if (val is double) return val;
+  if (val is num) return val.toDouble();
+  return double.tryParse(val.toString()) ?? 0.0;
+}
+
 class User {
   final String publicId;
   final String name;
@@ -21,14 +35,14 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      publicId: json['public_id'] ?? json['id']?.toString() ?? '',
-      name: json['name'] ?? '',
-      email: json['email'] ?? '',
-      mobile: json['mobile_number'] ?? json['mobile'],
-      referralCode: json['referral_code'],
-      status: json['status'] ?? 'active',
-      kycStatus: json['kyc_status'] ?? 'approved',
-      payoutEnabled: json['payout_enabled'] ?? true,
+      publicId: json['public_id']?.toString() ?? json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      mobile: (json['mobile_number'] ?? json['mobile'])?.toString(),
+      referralCode: json['referral_code']?.toString(),
+      status: json['status']?.toString() ?? 'active',
+      kycStatus: json['kyc_status']?.toString() ?? 'approved',
+      payoutEnabled: json['payout_enabled'] == true || json['payout_enabled'] == 1 || json['payout_enabled'] == '1',
     );
   }
 
@@ -46,6 +60,7 @@ class User {
 
 class Campaign {
   final int id;
+  final String publicId;
   final String name;
   final String? logo;
   final String category;
@@ -59,6 +74,7 @@ class Campaign {
 
   Campaign({
     required this.id,
+    this.publicId = '',
     required this.name,
     this.logo,
     required this.category,
@@ -72,18 +88,23 @@ class Campaign {
   });
 
   factory Campaign.fromJson(Map<String, dynamic> json) {
+    final parsedId = _parseInt(json['id']);
+    final pubId = json['public_id']?.toString() ?? (parsedId != 0 ? parsedId.toString() : '');
+    final fallbackId = parsedId != 0 ? parsedId : pubId.hashCode.abs();
+
     return Campaign(
-      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
-      name: json['name'] ?? '',
-      logo: json['logo'],
-      category: json['category'] ?? 'General',
-      advertiserPayout: (json['advertiser_payout'] ?? json['payout_amount'] ?? 0).toDouble(),
-      affiliatePayout: (json['affiliate_payout'] ?? json['user_payout'] ?? json['payout_amount'] ?? 0).toDouble(),
-      conversionType: json['conversion_type'] ?? 'CPA',
-      status: json['status'] ?? 'active',
-      description: json['description'],
-      terms: json['terms'],
-      eligibility: json['eligibility'],
+      id: fallbackId,
+      publicId: pubId,
+      name: json['name']?.toString() ?? '',
+      logo: json['logo']?.toString(),
+      category: json['category']?.toString() ?? 'General',
+      advertiserPayout: _parseDouble(json['advertiser_payout'] ?? json['payout_amount']),
+      affiliatePayout: _parseDouble(json['allocated_affiliate_payout'] ?? json['affiliate_payout'] ?? json['user_payout'] ?? json['payout_amount']),
+      conversionType: json['conversion_type']?.toString() ?? 'CPA',
+      status: json['status']?.toString() ?? 'active',
+      description: json['short_description']?.toString() ?? json['description']?.toString(),
+      terms: json['terms']?.toString(),
+      eligibility: json['eligibility']?.toString(),
     );
   }
 }
@@ -114,17 +135,25 @@ class AffiliateLink {
   });
 
   factory AffiliateLink.fromJson(Map<String, dynamic> json) {
+    final parsedId = _parseInt(json['id']);
+    final parsedCampId = _parseInt(json['campaign_id'] ?? json['campaign']?['id']);
+    final token = json['secure_token']?.toString() ?? json['code']?.toString() ?? '';
+    final rawUrl = json['public_url']?.toString() ?? json['secure_url']?.toString() ?? json['tracking_url']?.toString();
+    final url = (rawUrl != null && rawUrl.isNotEmpty)
+        ? rawUrl
+        : (token.isNotEmpty ? 'https://taskwala.co.in/go/$token' : '');
+
     return AffiliateLink(
-      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
-      campaignId: json['campaign_id'] is int ? json['campaign_id'] : int.parse(json['campaign_id'].toString()),
-      campaignName: json['campaign_name'] ?? json['campaign']?['name'] ?? 'Campaign',
-      secureUrl: json['secure_url'] ?? json['tracking_url'] ?? '',
-      code: json['code'] ?? '',
-      customerPayout: (json['customer_payout'] ?? 0).toDouble(),
-      affiliateCommission: (json['affiliate_commission'] ?? 0).toDouble(),
-      clicks: json['clicks_count'] ?? json['clicks'] ?? 0,
-      conversions: json['conversions_count'] ?? json['conversions'] ?? 0,
-      createdAt: json['created_at'] ?? '',
+      id: parsedId != 0 ? parsedId : (json['public_id']?.toString().hashCode.abs() ?? 0),
+      campaignId: parsedCampId != 0 ? parsedCampId : 1,
+      campaignName: json['campaign_name']?.toString() ?? json['campaign']?['name']?.toString() ?? 'Campaign',
+      secureUrl: url,
+      code: token,
+      customerPayout: _parseDouble(json['customer_payout']),
+      affiliateCommission: _parseDouble(json['affiliate_commission']),
+      clicks: _parseInt(json['clicks_count'] ?? json['click_count'] ?? json['clicks']),
+      conversions: _parseInt(json['conversions_count'] ?? json['conversion_count'] ?? json['conversions']),
+      createdAt: json['created_at']?.toString() ?? '',
     );
   }
 }
@@ -146,11 +175,11 @@ class ClickReport {
 
   factory ClickReport.fromJson(Map<String, dynamic> json) {
     return ClickReport(
-      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
-      campaignName: json['campaign_name'] ?? json['campaign']?['name'] ?? 'Campaign',
-      linkCode: json['link_code'] ?? json['link']?['code'] ?? 'N/A',
-      ipAddress: json['ip_address'] ?? 'Masked',
-      clickedAt: json['created_at'] ?? json['clicked_at'] ?? '',
+      id: _parseInt(json['id']),
+      campaignName: json['campaign_name']?.toString() ?? json['campaign']?['name']?.toString() ?? 'Campaign',
+      linkCode: json['link_code']?.toString() ?? json['link']?['code']?.toString() ?? json['link']?['secure_token']?.toString() ?? 'N/A',
+      ipAddress: json['ip_address']?.toString() ?? 'Masked',
+      clickedAt: json['created_at']?.toString() ?? json['clicked_at']?.toString() ?? '',
     );
   }
 }
@@ -177,15 +206,57 @@ class ConversionReport {
   });
 
   factory ConversionReport.fromJson(Map<String, dynamic> json) {
+    final parsedId = _parseInt(json['id']);
     return ConversionReport(
-      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
-      campaignName: json['campaign_name'] ?? json['campaign']?['name'] ?? 'Campaign',
-      referenceId: json['reference_id'] ?? json['click_id'] ?? 'REF-${json['id']}',
-      customerPayout: (json['customer_payout'] ?? 0).toDouble(),
-      commission: (json['commission'] ?? json['affiliate_commission'] ?? 0).toDouble(),
-      status: json['status'] ?? 'pending',
-      payoutStatus: json['payout_status'] ?? 'unpaid',
-      createdAt: json['created_at'] ?? '',
+      id: parsedId,
+      campaignName: json['campaign_name']?.toString() ?? json['campaign']?['name']?.toString() ?? 'Campaign',
+      referenceId: json['reference_id']?.toString() ?? json['click_id']?.toString() ?? 'REF-$parsedId',
+      customerPayout: _parseDouble(json['customer_payout']),
+      commission: _parseDouble(json['commission'] ?? json['affiliate_commission']),
+      status: json['status']?.toString() ?? 'pending',
+      payoutStatus: json['payout_status']?.toString() ?? 'unpaid',
+      createdAt: json['conversion_time']?.toString() ?? json['created_at']?.toString() ?? '',
+    );
+  }
+}
+
+class PayoutRequestItem {
+  final int id;
+  final String publicId;
+  final double amount;
+  final String upiId;
+  final String? upiHolderName;
+  final String status;
+  final String? transactionId;
+  final String? adminNotes;
+  final String createdAt;
+  final String? processedAt;
+
+  PayoutRequestItem({
+    required this.id,
+    required this.publicId,
+    required this.amount,
+    required this.upiId,
+    this.upiHolderName,
+    required this.status,
+    this.transactionId,
+    this.adminNotes,
+    required this.createdAt,
+    this.processedAt,
+  });
+
+  factory PayoutRequestItem.fromJson(Map<String, dynamic> json) {
+    return PayoutRequestItem(
+      id: _parseInt(json['id']),
+      publicId: json['public_id']?.toString() ?? '',
+      amount: _parseDouble(json['amount']),
+      upiId: json['upi_id']?.toString() ?? '',
+      upiHolderName: json['upi_holder_name']?.toString(),
+      status: json['status']?.toString() ?? 'pending',
+      transactionId: json['transaction_id']?.toString(),
+      adminNotes: json['admin_notes']?.toString(),
+      createdAt: json['created_at']?.toString() ?? '',
+      processedAt: json['processed_at']?.toString(),
     );
   }
 }
@@ -198,7 +269,9 @@ class WalletData {
   final double totalPaid;
   final String? upiId;
   final String upiStatus;
+  final double minWithdrawalThreshold;
   final List<WalletTransaction> transactions;
+  final List<PayoutRequestItem> payoutRequests;
 
   WalletData({
     required this.availableBalance,
@@ -208,23 +281,39 @@ class WalletData {
     required this.totalPaid,
     this.upiId,
     required this.upiStatus,
+    this.minWithdrawalThreshold = 500.0,
     required this.transactions,
+    this.payoutRequests = const [],
   });
 
   factory WalletData.fromJson(Map<String, dynamic> json) {
-    var txList = (json['transactions'] as List? ?? [])
-        .map((t) => WalletTransaction.fromJson(t))
-        .toList();
+    final rawTx = json['transactions'];
+    final List<dynamic> txData = rawTx is List
+        ? rawTx
+        : (rawTx is Map && rawTx['data'] is List ? rawTx['data'] : []);
+
+    final txList = txData.map((t) => WalletTransaction.fromJson(Map<String, dynamic>.from(t as Map))).toList();
+
+    final rawPayouts = json['payout_requests'];
+    final List<dynamic> payoutData = rawPayouts is List
+        ? rawPayouts
+        : (rawPayouts is Map && rawPayouts['data'] is List ? rawPayouts['data'] : []);
+
+    final payoutList = payoutData.map((p) => PayoutRequestItem.fromJson(Map<String, dynamic>.from(p as Map))).toList();
+
+    final threshold = _parseDouble(json['min_withdrawal_threshold']);
 
     return WalletData(
-      availableBalance: (json['available_balance'] ?? json['balance'] ?? 0).toDouble(),
-      pendingBalance: (json['pending_balance'] ?? 0).toDouble(),
-      approvedBalance: (json['approved_balance'] ?? 0).toDouble(),
-      totalEarnings: (json['total_earnings'] ?? 0).toDouble(),
-      totalPaid: (json['total_paid'] ?? 0).toDouble(),
-      upiId: json['upi_id'],
-      upiStatus: json['upi_status'] ?? 'not_added',
+      availableBalance: _parseDouble(json['available_balance'] ?? json['balance']),
+      pendingBalance: _parseDouble(json['pending_balance']),
+      approvedBalance: _parseDouble(json['approved_balance']),
+      totalEarnings: _parseDouble(json['total_earnings']),
+      totalPaid: _parseDouble(json['total_paid']),
+      upiId: json['upi_id']?.toString(),
+      upiStatus: json['upi_status']?.toString() ?? 'not_added',
+      minWithdrawalThreshold: threshold > 0 ? threshold : 500.0,
       transactions: txList,
+      payoutRequests: payoutList,
     );
   }
 }
@@ -248,12 +337,12 @@ class WalletTransaction {
 
   factory WalletTransaction.fromJson(Map<String, dynamic> json) {
     return WalletTransaction(
-      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
-      type: json['type'] ?? 'earning',
-      amount: (json['amount'] ?? 0).toDouble(),
-      description: json['description'] ?? 'Transaction',
-      status: json['status'] ?? 'completed',
-      createdAt: json['created_at'] ?? '',
+      id: _parseInt(json['id']),
+      type: json['type']?.toString() ?? 'earning',
+      amount: _parseDouble(json['amount']),
+      description: json['description']?.toString() ?? 'Transaction',
+      status: json['status']?.toString() ?? 'completed',
+      createdAt: json['created_at']?.toString() ?? '',
     );
   }
 }
@@ -284,17 +373,18 @@ class ReferralDashboardData {
   });
 
   factory ReferralDashboardData.fromJson(Map<String, dynamic> json) {
+    final stats = json['stats'] is Map ? json['stats'] : json;
     return ReferralDashboardData(
-      referralCode: json['referral_code'] ?? '',
-      referralLink: json['referral_link'] ?? '',
-      totalReferred: json['total_referred'] ?? 0,
-      registeredCount: json['registered_count'] ?? 0,
-      activeCount: json['active_count'] ?? 0,
-      convertedCount: json['converted_count'] ?? 0,
-      totalEarnings: (json['total_earnings'] ?? 0).toDouble(),
-      pendingEarnings: (json['pending_earnings'] ?? 0).toDouble(),
-      paidEarnings: (json['paid_earnings'] ?? 0).toDouble(),
-      currentRuleSummary: json['current_rule_summary'] ?? 'Standard Referral Rewards Active',
+      referralCode: json['referral_code']?.toString() ?? '',
+      referralLink: json['referral_url']?.toString() ?? json['referral_link']?.toString() ?? '',
+      totalReferred: _parseInt(stats['total_referred']),
+      registeredCount: _parseInt(stats['active_referred'] ?? stats['registered_count']),
+      activeCount: _parseInt(stats['active_referred'] ?? stats['active_count']),
+      convertedCount: _parseInt(stats['converted_referred'] ?? stats['converted_count']),
+      totalEarnings: _parseDouble(stats['total_referral_earnings'] ?? stats['total_earnings']),
+      pendingEarnings: _parseDouble(stats['pending_referral_earnings'] ?? stats['pending_earnings']),
+      paidEarnings: _parseDouble(stats['paid_referral_earnings'] ?? stats['paid_earnings']),
+      currentRuleSummary: json['current_rule']?['summary']?.toString() ?? json['current_rule_summary']?.toString() ?? 'Standard Referral Rewards Active',
     );
   }
 }
@@ -318,12 +408,12 @@ class TeamMember {
 
   factory TeamMember.fromJson(Map<String, dynamic> json) {
     return TeamMember(
-      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
-      name: json['name'] ?? 'User',
-      joinedDate: json['joined_date'] ?? json['created_at'] ?? '',
-      status: json['status'] ?? 'active',
-      qualifyingConversions: json['qualifying_conversions'] ?? 0,
-      referralEarnings: (json['referral_earnings'] ?? 0).toDouble(),
+      id: _parseInt(json['id']),
+      name: json['name']?.toString() ?? 'User',
+      joinedDate: json['joined_date']?.toString() ?? json['created_at']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'active',
+      qualifyingConversions: _parseInt(json['qualifying_conversions']),
+      referralEarnings: _parseDouble(json['referral_earnings']),
     );
   }
 }
