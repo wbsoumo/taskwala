@@ -25,6 +25,7 @@ class CampaignController extends Controller
             ->get()
             ->map(function ($c) use ($user) {
                 return [
+                    'id' => $c->id,
                     'public_id' => $c->public_id,
                     'name' => $c->name,
                     'category' => $c->category,

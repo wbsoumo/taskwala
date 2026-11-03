@@ -31,12 +31,31 @@ class LinkController extends Controller
     public function generate(Request $request): JsonResponse
     {
         $request->validate([
-            'campaign_public_id' => ['required', 'exists:campaigns,public_id'],
+            'campaign_public_id' => ['nullable', 'string'],
+            'campaign_id' => ['nullable'],
             'customer_payout' => ['required', 'numeric', 'min:0'],
         ]);
 
+        $campaignIdentifier = $request->input('campaign_public_id') ?? $request->input('campaign_id');
+        if (!$campaignIdentifier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Campaign identifier (campaign_public_id or campaign_id) is required.'
+            ], 422);
+        }
+
+        $campaign = Campaign::where('public_id', $campaignIdentifier)
+            ->orWhere('id', $campaignIdentifier)
+            ->first();
+
+        if (!$campaign) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Campaign not found or inactive.'
+            ], 404);
+        }
+
         $user = $request->user();
-        $campaign = Campaign::where('public_id', $request->campaign_public_id)->firstOrFail();
 
         try {
             $link = $this->linkService->generateLink(
@@ -46,17 +65,28 @@ class LinkController extends Controller
             );
 
             return response()->json([
+                'success' => true,
                 'message' => 'Link generated successfully.',
                 'public_url' => $link->public_url,
+                'data' => array_merge($link->load('campaign')->toArray(), [
+                    'public_url' => $link->public_url,
+                    'campaign_name' => $campaign->name,
+                ]),
                 'link' => [
+                    'id' => $link->id,
                     'public_id' => $link->public_id,
+                    'campaign_name' => $campaign->name,
                     'secure_token' => $link->secure_token,
                     'customer_payout' => (float) $link->customer_payout,
                     'affiliate_commission' => (float) $link->affiliate_commission,
+                    'public_url' => $link->public_url,
                 ],
             ], 201);
         } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
         }
     }
 }

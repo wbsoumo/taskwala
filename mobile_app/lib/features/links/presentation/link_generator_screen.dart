@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:dio/dio.dart';
 
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/auth_provider.dart';
@@ -54,26 +55,68 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
 
     try {
       final api = ref.read(apiClientProvider);
+      final campaignIdentifier = widget.campaign.publicId.isNotEmpty
+          ? widget.campaign.publicId
+          : (widget.campaign.id != 0 ? widget.campaign.id.toString() : '');
+
       final response = await api.post('/links/generate', data: {
-        'campaign_id': widget.campaign.id,
+        'campaign_public_id': campaignIdentifier,
+        'campaign_id': campaignIdentifier,
         'customer_payout': _customerPayout,
       });
 
-      if (response.data['success'] == true) {
+      final resData = response.data;
+      final isSuccess = response.statusCode == 200 ||
+          response.statusCode == 201 ||
+          (resData is Map && resData['success'] == true);
+
+      if (isSuccess && resData is Map) {
+        Map<String, dynamic> linkData = {};
+        if (resData['data'] is Map) {
+          linkData = Map<String, dynamic>.from(resData['data']);
+        } else if (resData['link'] is Map) {
+          linkData = Map<String, dynamic>.from(resData['link']);
+        } else {
+          linkData = Map<String, dynamic>.from(resData);
+        }
+
+        if (resData['public_url'] != null && (linkData['public_url'] == null || linkData['public_url'].toString().isEmpty)) {
+          linkData['public_url'] = resData['public_url'];
+        }
+
+        if (linkData['campaign_name'] == null || linkData['campaign_name'].toString().isEmpty) {
+          linkData['campaign_name'] = widget.campaign.name;
+        }
+
         setState(() {
-          _generatedLink = AffiliateLink.fromJson(response.data['data']);
+          _generatedLink = AffiliateLink.fromJson(linkData);
           _isGenerating = false;
         });
         ref.invalidate(myLinksProvider);
       } else {
+        final msg = resData is Map ? resData['message']?.toString() : null;
         setState(() {
-          _error = response.data['message'] ?? 'Failed to generate link';
+          _error = msg ?? 'Failed to generate link. Please try again.';
           _isGenerating = false;
         });
       }
+    } on DioException catch (e) {
+      String msg = 'Failed to generate link';
+      if (e.response?.data is Map) {
+        final map = e.response!.data as Map;
+        msg = map['message']?.toString() ??
+            (map['errors'] is Map ? (map['errors'] as Map).values.first?.toString() : null) ??
+            msg;
+      } else if (e.message != null && e.message!.isNotEmpty) {
+        msg = e.message!;
+      }
+      setState(() {
+        _error = msg;
+        _isGenerating = false;
+      });
     } catch (e) {
       setState(() {
-        _error = 'Error connecting to backend server';
+        _error = 'Error connecting to backend server: $e';
         _isGenerating = false;
       });
     }
@@ -262,7 +305,30 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
+
+                    // Interactive Slider
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: AppColors.mint,
+                        inactiveTrackColor: AppColors.mintBg,
+                        thumbColor: AppColors.mint,
+                        overlayColor: AppColors.mint.withValues(alpha: 0.15),
+                        trackHeight: 4,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
+                      ),
+                      child: Slider(
+                        value: _customerPayout.clamp(0.0, widget.campaign.affiliatePayout > 0 ? widget.campaign.affiliatePayout : 1.0),
+                        min: 0.0,
+                        max: widget.campaign.affiliatePayout > 0 ? widget.campaign.affiliatePayout : 1.0,
+                        onChanged: (val) {
+                          setState(() {
+                            _customerPayoutController.text = val.round().toString();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
 
                     // Live Commission Split Card
                     Container(
@@ -344,11 +410,31 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
                     const SizedBox(height: 22),
 
                     if (_error != null) ...[
-                      Text(
-                        _error!,
-                        style: GoogleFonts.plusJakartaSans(color: AppColors.danger, fontSize: 13),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                        decoration: BoxDecoration(
+                          color: AppColors.dangerBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.danger.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.danger),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _error!,
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: AppColors.danger,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
                     ],
 
                     SizedBox(
