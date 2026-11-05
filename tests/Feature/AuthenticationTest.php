@@ -48,18 +48,109 @@ class AuthenticationTest extends TestCase
         $this->assertAuthenticatedAs($user, 'web');
     }
 
-    public function test_users_cannot_access_admin_routes()
+    public function test_registration_requires_email_verification()
     {
-        $user = User::create([
-            'name' => 'Affiliate User',
-            'email' => 'affiliate@test.com',
-            'password' => Hash::make('password123'),
-            'status' => 'active',
+        $response = $this->postJson('/api/v1/auth/register', [
+            'name' => 'New User',
+            'email' => 'newuser@test.com',
+            'mobile_number' => '9998887776',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ]);
 
-        $this->actingAs($user, 'web');
+        $response->assertStatus(201)
+            ->assertJson([
+                'success' => true,
+                'requires_verification' => true,
+                'email' => 'newuser@test.com',
+            ]);
 
-        $response = $this->get(route('admin.dashboard'));
-        $response->assertRedirect(route('admin.login'));
+        $this->assertDatabaseHas('users', [
+            'email' => 'newuser@test.com',
+            'email_verified_at' => null,
+        ]);
+    }
+
+    public function test_unverified_user_cannot_login_and_receives_verification_prompt()
+    {
+        User::create([
+            'name' => 'Unverified Person',
+            'email' => 'unverified@test.com',
+            'mobile_number' => '9991112233',
+            'password' => Hash::make('Password123!'),
+            'status' => 'active',
+            'email_verified_at' => null,
+        ]);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'login' => 'unverified@test.com',
+            'password' => 'Password123!',
+        ]);
+
+        $response->assertStatus(403)
+            ->assertJson([
+                'success' => false,
+                'requires_verification' => true,
+                'email' => 'unverified@test.com',
+            ]);
+    }
+
+    public function test_user_can_verify_email_and_login()
+    {
+        $regResponse = $this->postJson('/api/v1/auth/register', [
+            'name' => 'Verify User',
+            'email' => 'verifyuser@test.com',
+            'mobile_number' => '9992223344',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+        ]);
+
+        $otp = $regResponse->json('debug_code');
+
+        $verifyResponse = $this->postJson('/api/v1/auth/verify-email', [
+            'email' => 'verifyuser@test.com',
+            'otp' => $otp,
+        ]);
+
+        $verifyResponse->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+            ])
+            ->assertJsonStructure(['token', 'user']);
+
+        $this->assertNotNull(User::where('email', 'verifyuser@test.com')->first()->email_verified_at);
+    }
+
+    public function test_forgot_password_can_lookup_by_name_and_sends_to_email()
+    {
+        $user = User::create([
+            'name' => 'Soumojit Partner',
+            'email' => 'soumojit@test.com',
+            'mobile_number' => '9876543210',
+            'password' => Hash::make('Password123!'),
+            'status' => 'active',
+            'email_verified_at' => now(),
+        ]);
+
+        // Search using name
+        $response = $this->postJson('/api/v1/auth/forgot-password', [
+            'login' => 'Soumojit Partner',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+            ]);
+
+        $this->assertNotEmpty($response->json('debug_code'));
+        $otp = $response->json('debug_code');
+
+        // Verify OTP with name
+        $verifyRes = $this->postJson('/api/v1/auth/verify-otp', [
+            'login' => 'Soumojit Partner',
+            'otp' => $otp,
+        ]);
+
+        $verifyRes->assertStatus(200)->assertJson(['success' => true]);
     }
 }

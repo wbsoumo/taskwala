@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\OtpMailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -18,7 +18,7 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $request->validate([
-            'login' => ['required', 'string'], // Email or Mobile number
+            'login' => ['required', 'string'], // Email, Mobile number, or Name
             'password' => ['required', 'string'],
         ]);
 
@@ -26,6 +26,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $login)
             ->orWhere('mobile_number', $login)
+            ->orWhere('name', $login)
             ->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -36,6 +37,29 @@ class AuthController extends Controller
 
         if (!$user->isActive()) {
             return response()->json(['message' => 'Account is suspended or blocked.'], 403);
+        }
+
+        // Email Verification check: Always verify user's email id
+        if ($user->email_verified_at === null) {
+            $otp = (string) random_int(100000, 999999);
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $user->email],
+                [
+                    'token' => Hash::make($otp),
+                    'created_at' => now(),
+                ]
+            );
+
+            OtpMailService::sendRegistrationVerificationOtp($user->email, $user->name, $otp);
+
+            return response()->json([
+                'success' => false,
+                'requires_verification' => true,
+                'message' => 'Please verify your email address to log in. We have sent a verification code to ' . $this->maskEmail($user->email),
+                'email' => $user->email,
+                'email_hint' => $this->maskEmail($user->email),
+                'debug_code' => $otp,
+            ], 403);
         }
 
         $token = $user->createToken('mobile_app_token')->plainTextToken;
@@ -79,12 +103,76 @@ class AuthController extends Controller
             'password' => Hash::make($validated['password']),
             'referred_by' => $referrerId,
             'status' => 'active',
+            'email_verified_at' => null,
         ]);
+
+        $otp = (string) random_int(100000, 999999);
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            [
+                'token' => Hash::make($otp),
+                'created_at' => now(),
+            ]
+        );
+
+        OtpMailService::sendRegistrationVerificationOtp($user->email, $user->name, $otp);
+
+        return response()->json([
+            'success' => true,
+            'requires_verification' => true,
+            'message' => 'Registration successful! Please verify your email with the 6-digit code sent to ' . $this->maskEmail($user->email),
+            'email' => $user->email,
+            'email_hint' => $this->maskEmail($user->email),
+            'debug_code' => $otp,
+        ], 201);
+    }
+
+    public function verifyEmail(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'string'],
+            'otp' => ['required', 'string', 'size:6'],
+        ]);
+
+        $email = trim($request->email);
+        $user = User::where('email', $email)
+            ->orWhere('mobile_number', $email)
+            ->orWhere('name', $email)
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        $record = DB::table('password_reset_tokens')->where('email', $user->email)->first();
+
+        if (!$record || !Hash::check($request->otp, $record->token)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or incorrect verification code.',
+            ], 422);
+        }
+
+        if (Carbon::parse($record->created_at)->addMinutes(15)->isPast()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Verification code has expired. Please request a new code.',
+            ], 422);
+        }
+
+        $user->email_verified_at = now();
+        $user->save();
+
+        DB::table('password_reset_tokens')->where('email', $user->email)->delete();
 
         $token = $user->createToken('mobile_app_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Registration successful.',
+            'success' => true,
+            'message' => 'Email verified successfully! Welcome to Taskwala.',
             'token' => $token,
             'user' => [
                 'public_id' => $user->public_id,
@@ -92,9 +180,58 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'mobile_number' => $user->mobile_number,
                 'referral_code' => $user->referral_code,
+                'upi_id' => $user->upi_id,
+                'upi_holder_name' => $user->upi_holder_name,
                 'status' => $user->status,
             ],
-        ], 201);
+        ]);
+    }
+
+    public function resendVerificationEmail(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'string'],
+        ]);
+
+        $email = trim($request->email);
+        $user = User::where('email', $email)
+            ->orWhere('mobile_number', $email)
+            ->orWhere('name', $email)
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        if ($user->email_verified_at !== null) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Email is already verified. You can log in.',
+                'already_verified' => true,
+            ]);
+        }
+
+        $otp = (string) random_int(100000, 999999);
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            [
+                'token' => Hash::make($otp),
+                'created_at' => now(),
+            ]
+        );
+
+        OtpMailService::sendRegistrationVerificationOtp($user->email, $user->name, $otp);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'A fresh verification code has been sent to your email (' . $this->maskEmail($user->email) . ').',
+            'email' => $user->email,
+            'email_hint' => $this->maskEmail($user->email),
+            'debug_code' => $otp,
+        ]);
     }
 
     public function profile(Request $request): JsonResponse
@@ -133,14 +270,16 @@ class AuthController extends Controller
 
         $login = trim($request->login);
 
+        // Search user by email, mobile number, or name
         $user = User::where('email', $login)
             ->orWhere('mobile_number', $login)
+            ->orWhere('name', $login)
             ->first();
 
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'No account found matching this email or mobile number.',
+                'message' => 'No account found matching this name, email or mobile number.',
             ], 404);
         }
 
@@ -163,22 +302,16 @@ class AuthController extends Controller
             ]
         );
 
-        // Send OTP email if mailer is configured
-        try {
-            Mail::raw("Your Taskwala verification code is: {$otp}\n\nThis code will expire in 15 minutes. If you did not request a password reset, please secure your account immediately.", function ($message) use ($user) {
-                $message->to($user->email)->subject('Taskwala - Password Reset Verification Code');
-            });
-        } catch (\Throwable $e) {
-            Log::warning('Password reset email error: ' . $e->getMessage());
-        }
+        // Always send OTP code strictly to the user's registered email address
+        OtpMailService::sendPasswordResetOtp($user->email, $user->name, $otp);
 
         return response()->json([
             'success' => true,
-            'message' => 'A 6-digit verification code has been sent.',
+            'message' => 'A 6-digit verification code has been sent to your registered email (' . $this->maskEmail($user->email) . ').',
             'login' => $login,
             'email_hint' => $this->maskEmail($user->email),
             'mobile_hint' => $this->maskMobile($user->mobile_number),
-            'debug_code' => $otp, // For smooth dev/testing flow
+            'debug_code' => $otp,
         ]);
     }
 
@@ -192,6 +325,7 @@ class AuthController extends Controller
         $login = trim($request->login);
         $user = User::where('email', $login)
             ->orWhere('mobile_number', $login)
+            ->orWhere('name', $login)
             ->first();
 
         if (!$user) {
@@ -234,6 +368,7 @@ class AuthController extends Controller
         $login = trim($request->login);
         $user = User::where('email', $login)
             ->orWhere('mobile_number', $login)
+            ->orWhere('name', $login)
             ->first();
 
         if (!$user) {
@@ -259,8 +394,11 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Update password
+        // Update password and ensure email is marked verified
         $user->password = Hash::make($request->password);
+        if ($user->email_verified_at === null) {
+            $user->email_verified_at = now();
+        }
         $user->save();
 
         // Clear reset token

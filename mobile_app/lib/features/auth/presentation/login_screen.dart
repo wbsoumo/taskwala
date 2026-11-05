@@ -34,13 +34,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     HapticFeedback.lightImpact();
 
-    final success = await ref.read(authProvider.notifier).login(
+    final result = await ref.read(authProvider.notifier).login(
           _loginController.text.trim(),
           _passwordController.text,
         );
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (result.success) {
       context.go('/');
+    } else if (result.requiresVerification) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text(
+            result.message ?? 'Please verify your email address to continue.',
+            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+        ),
+      );
+      context.push('/verify-email', extra: {
+        'email': result.email ?? _loginController.text.trim(),
+        'debug_code': result.debugCode,
+      });
     }
   }
 

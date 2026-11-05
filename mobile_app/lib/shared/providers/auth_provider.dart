@@ -1,7 +1,24 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage_service.dart';
 import '../models/models.dart';
+
+class AuthResult {
+  final bool success;
+  final bool requiresVerification;
+  final String? email;
+  final String? message;
+  final String? debugCode;
+
+  const AuthResult({
+    required this.success,
+    this.requiresVerification = false,
+    this.email,
+    this.message,
+    this.debugCode,
+  });
+}
 
 class AuthState {
   final User? user;
@@ -50,7 +67,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> login(String login, String password) async {
+  Future<AuthResult> login(String login, String password) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final response = await _apiClient.post('/auth/login', data: {
@@ -70,24 +87,49 @@ class AuthNotifier extends StateNotifier<AuthState> {
           isAuthenticated: true,
           isLoading: false,
         );
-        return true;
+        return const AuthResult(success: true);
       } else {
         state = state.copyWith(
           isLoading: false,
-          error: data['message'] ?? 'Login failed',
+          error: data?['message'] ?? 'Login failed',
         );
-        return false;
+        return AuthResult(
+          success: false,
+          message: data?['message'] ?? 'Login failed',
+        );
       }
+    } on DioException catch (e) {
+      if (e.response?.data is Map) {
+        final resData = e.response!.data as Map;
+        if (resData['requires_verification'] == true) {
+          state = state.copyWith(isLoading: false, error: null);
+          return AuthResult(
+            success: false,
+            requiresVerification: true,
+            email: resData['email']?.toString() ?? login,
+            message: resData['message']?.toString(),
+            debugCode: resData['debug_code']?.toString(),
+          );
+        }
+        final msg = resData['message']?.toString() ?? 'Invalid email/mobile or password credentials.';
+        state = state.copyWith(isLoading: false, error: msg);
+        return AuthResult(success: false, message: msg);
+      }
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Network error or invalid credentials',
+      );
+      return const AuthResult(success: false, message: 'Network error or invalid credentials');
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
         error: 'Network error or invalid credentials',
       );
-      return false;
+      return const AuthResult(success: false, message: 'Network error or invalid credentials');
     }
   }
 
-  Future<bool> register({
+  Future<AuthResult> register({
     required String name,
     required String email,
     required String mobile,
@@ -107,7 +149,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       });
 
       final data = response.data;
-      if (data != null && (data['token'] != null || (data['data'] != null && data['data']['token'] != null))) {
+      if (data != null && data['requires_verification'] == true) {
+        state = state.copyWith(isLoading: false, error: null);
+        return AuthResult(
+          success: false,
+          requiresVerification: true,
+          email: data['email']?.toString() ?? email,
+          message: data['message']?.toString(),
+          debugCode: data['debug_code']?.toString(),
+        );
+      } else if (data != null && (data['token'] != null || (data['data'] != null && data['data']['token'] != null))) {
         final token = data['token'] ?? data['data']['token'];
         final userData = data['user'] ?? data['data']?['user'] ?? {};
         await _storage.saveToken(token);
@@ -118,20 +169,95 @@ class AuthNotifier extends StateNotifier<AuthState> {
           isAuthenticated: true,
           isLoading: false,
         );
-        return true;
+        return const AuthResult(success: true);
       } else {
         state = state.copyWith(
           isLoading: false,
-          error: data['message'] ?? 'Registration failed',
+          error: data?['message'] ?? 'Registration failed',
         );
-        return false;
+        return AuthResult(success: false, message: data?['message'] ?? 'Registration failed');
       }
+    } on DioException catch (e) {
+      String msg = 'Registration failed. Check details.';
+      if (e.response?.data is Map) {
+        final resData = e.response!.data as Map;
+        msg = resData['message']?.toString() ??
+            (resData['errors'] is Map ? (resData['errors'] as Map).values.first?.toString() : null) ??
+            msg;
+      }
+      state = state.copyWith(isLoading: false, error: msg);
+      return AuthResult(success: false, message: msg);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
         error: 'Registration failed. Check details.',
       );
-      return false;
+      return const AuthResult(success: false, message: 'Registration failed. Check details.');
+    }
+  }
+
+  Future<AuthResult> verifyEmail({
+    required String email,
+    required String otp,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final response = await _apiClient.post('/auth/verify-email', data: {
+        'email': email,
+        'otp': otp,
+      });
+
+      final data = response.data;
+      if (data != null && data['token'] != null) {
+        final token = data['token'];
+        final userData = data['user'] ?? {};
+        await _storage.saveToken(token);
+        _apiClient.setAuthToken(token);
+        final user = User.fromJson(userData);
+        state = state.copyWith(
+          user: user,
+          isAuthenticated: true,
+          isLoading: false,
+        );
+        return AuthResult(success: true, message: data['message']);
+      } else {
+        final msg = data?['message'] ?? 'Verification failed';
+        state = state.copyWith(isLoading: false, error: msg);
+        return AuthResult(success: false, message: msg);
+      }
+    } on DioException catch (e) {
+      String msg = 'Invalid or expired verification code.';
+      if (e.response?.data is Map) {
+        final resData = e.response!.data as Map;
+        msg = resData['message']?.toString() ?? msg;
+      }
+      state = state.copyWith(isLoading: false, error: msg);
+      return AuthResult(success: false, message: msg);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'Verification failed');
+      return const AuthResult(success: false, message: 'Verification failed. Please check connection.');
+    }
+  }
+
+  Future<Map<String, dynamic>> resendVerificationEmail(String email) async {
+    try {
+      final response = await _apiClient.post('/auth/resend-verification-email', data: {
+        'email': email,
+      });
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return data;
+      }
+      return {'success': true, 'message': 'Verification code resent successfully.'};
+    } on DioException catch (e) {
+      String msg = 'Failed to resend code.';
+      if (e.response?.data is Map) {
+        final resData = e.response!.data as Map;
+        msg = resData['message']?.toString() ?? msg;
+      }
+      return {'success': false, 'message': msg};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error while resending code.'};
     }
   }
 

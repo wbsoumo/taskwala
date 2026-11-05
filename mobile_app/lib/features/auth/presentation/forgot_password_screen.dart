@@ -26,7 +26,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  bool _isMobileTab = true;
+  int _lookupTab = 0; // 0 = Email, 1 = Name, 2 = Mobile
   bool _isSubmitting = false;
   bool _obscureNewPass = true;
   bool _obscureConfirmPass = true;
@@ -35,7 +35,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   // Step 2 state
   int _currentStep = 1;
   String? _emailHint;
-  String? _mobileHint;
   String? _debugCode;
 
   // Resend Timer
@@ -87,7 +86,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         setState(() {
           _currentStep = 2;
           _emailHint = data['email_hint']?.toString();
-          _mobileHint = data['mobile_hint']?.toString();
           _debugCode = data['debug_code']?.toString();
           _isSubmitting = false;
           _errorMessage = null;
@@ -358,7 +356,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Toggle Tabs (Mobile vs Email)
+          // Toggle Tabs (Email, Name, Mobile)
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -367,64 +365,25 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             ),
             child: Row(
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _isMobileTab = true),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: _isMobileTab ? AppColors.surface : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: _isMobileTab ? AppShadows.soft : [],
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Mobile Number',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: _isMobileTab ? AppColors.textPrimary : AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _isMobileTab = false),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: !_isMobileTab ? AppColors.surface : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: !_isMobileTab ? AppShadows.soft : [],
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Email Address',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: !_isMobileTab ? AppColors.textPrimary : AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                _buildLookupTab(0, 'Email'),
+                _buildLookupTab(1, 'Name'),
+                _buildLookupTab(2, 'Mobile'),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
           TextFormField(
             controller: _contactController,
-            keyboardType: _isMobileTab ? TextInputType.phone : TextInputType.emailAddress,
+            keyboardType: _lookupTab == 2
+                ? TextInputType.phone
+                : (_lookupTab == 0 ? TextInputType.emailAddress : TextInputType.text),
             style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600),
             decoration: InputDecoration(
-              hintText: _isMobileTab ? 'Enter 10-digit mobile number' : 'Enter registered email address',
-              prefixIcon: _isMobileTab
+              hintText: _lookupTab == 0
+                  ? 'Enter registered email address'
+                  : (_lookupTab == 1 ? 'Enter your account name' : 'Enter 10-digit mobile number'),
+              prefixIcon: _lookupTab == 2
                   ? Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       alignment: Alignment.centerLeft,
@@ -437,22 +396,49 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                         ),
                       ),
                     )
-                  : const Icon(Icons.email_outlined, size: 20, color: AppColors.textMuted),
+                  : Icon(
+                      _lookupTab == 0 ? Icons.email_outlined : Icons.person_outline_rounded,
+                      size: 20,
+                      color: AppColors.textMuted,
+                    ),
             ),
             validator: (val) {
               if (val == null || val.trim().isEmpty) {
-                return _isMobileTab ? 'Please enter mobile number' : 'Please enter email address';
+                return _lookupTab == 0
+                    ? 'Please enter email address'
+                    : (_lookupTab == 1 ? 'Please enter your name' : 'Please enter mobile number');
               }
-              if (_isMobileTab && val.trim().length < 10) {
+              if (_lookupTab == 2 && val.trim().length < 10) {
                 return 'Please enter a valid 10-digit mobile number';
               }
-              if (!_isMobileTab && !val.contains('@')) {
+              if (_lookupTab == 0 && !val.contains('@')) {
                 return 'Please enter a valid email address';
               }
               return null;
             },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'The 6-digit verification code will always be sent directly to your registered email address.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11.5,
+                      color: AppColors.textSecondary,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
 
           if (_errorMessage != null) ...[
             _buildErrorAlert(_errorMessage!),
@@ -488,6 +474,38 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     );
   }
 
+  Widget _buildLookupTab(int index, String title) {
+    final isSelected = _lookupTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _lookupTab = index;
+            _contactController.clear();
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: isSelected ? AppShadows.soft : [],
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            title,
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildStep2Form() {
     return Form(
       key: _formKeyStep2,
@@ -511,16 +529,16 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Code sent to:',
+                        'Code sent to registered email:',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
                           color: AppColors.textSecondary,
                         ),
                       ),
                       Text(
-                        _mobileHint?.isNotEmpty == true
-                            ? _mobileHint!
-                            : (_emailHint?.isNotEmpty == true ? _emailHint! : _contactController.text),
+                        _emailHint?.isNotEmpty == true
+                            ? _emailHint!
+                            : (_contactController.text.contains('@') ? _contactController.text : 'Registered email'),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,

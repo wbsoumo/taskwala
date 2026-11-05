@@ -17,6 +17,7 @@ class User extends Authenticatable
         'name',
         'email',
         'mobile_number',
+        'email_verified_at',
         'password',
         'status',
         'upi_id',

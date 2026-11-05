@@ -7,6 +7,7 @@ import '../../shared/models/models.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
+import '../../features/auth/presentation/email_verification_screen.dart';
 import '../../features/dashboard/presentation/main_shell_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/campaigns/presentation/campaigns_screen.dart';
@@ -60,7 +61,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
-          state.matchedLocation == '/forgot-password';
+          state.matchedLocation == '/forgot-password' ||
+          state.matchedLocation == '/verify-email';
 
       final currentAuth = ref.read(authProvider);
       if (currentAuth.isLoading) return null;
@@ -146,6 +148,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           state: state,
           child: const ForgotPasswordScreen(),
         ),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final email = extra['email']?.toString() ?? '';
+          final debugCode = extra['debug_code']?.toString();
+          return _buildSmoothPage(
+            context: context,
+            state: state,
+            child: EmailVerificationScreen(
+              email: email,
+              debugCode: debugCode,
+            ),
+          );
+        },
       ),
       GoRoute(
         path: '/link-generator',

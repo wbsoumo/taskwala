@@ -56,17 +56,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
     HapticFeedback.lightImpact();
 
-    final success = await ref.read(authProvider.notifier).register(
+    final result = await ref.read(authProvider.notifier).register(
           name: _nameController.text.trim(),
           email: _emailController.text.trim(),
           mobile: _mobileController.text.trim(),
           password: _passwordController.text,
-          passwordConfirmation: _confirmPasswordController.text,
+          passwordConfirmation: _confirmPasswordController.text.isNotEmpty
+              ? _confirmPasswordController.text
+              : _passwordController.text,
           referralCode: _referralController.text.trim(),
         );
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (result.success) {
       context.go('/');
+    } else if (result.requiresVerification) {
+      context.push('/verify-email', extra: {
+        'email': result.email ?? _emailController.text.trim(),
+        'debug_code': result.debugCode,
+      });
     }
   }
 
@@ -217,7 +226,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             },
                           ),
                         ),
-                        validator: (val) => val == null || val.length < 6 ? 'Min 6 characters' : null,
+                        validator: (val) => val == null || val.length < 8 ? 'Min 8 characters' : null,
                       ),
                       const SizedBox(height: 16),
 
