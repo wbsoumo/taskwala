@@ -231,6 +231,24 @@ class DealsManagementTest extends TestCase
             ]);
 
         $testTelegramRes->assertOk()->assertJson(['success' => true]);
+
+        // Test Telegram Channel Scraping Endpoint
+        Http::fake([
+            'https://t.me/s/my_loot_channel' => Http::response(
+                '<div class="tgme_widget_message" data-post="my_loot_channel/100">' .
+                '<div class="tgme_widget_message_text">Crazy Deal: Noise Smartwatch at Rs. 999 (MRP Rs. 3,999) https://www.amazon.in/dp/B00TEST</div>' .
+                '<a href="https://www.amazon.in/dp/B00TEST">Buy</a>' .
+                '</div></div></div>',
+                200
+            ),
+        ]);
+
+        $testChannelRes = $this->actingAs($this->admin, 'admin')
+            ->postJson(route('admin.deals.settings.test_channel'), [
+                'channel' => '@my_loot_channel',
+            ]);
+
+        $testChannelRes->assertOk()->assertJson(['success' => true]);
     }
 
     public function test_user_can_browse_deals_and_redirect_increments_clicks()

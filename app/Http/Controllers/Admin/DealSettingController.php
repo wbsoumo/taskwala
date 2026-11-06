@@ -20,8 +20,9 @@ class DealSettingController extends Controller
     {
         $settings = [
             'deals_telegram_bot_token' => Setting::get('deals_telegram_bot_token', ''),
-            'deals_telegram_channels' => Setting::get('deals_telegram_channels', '@lootdeals, @deals_india'),
+            'deals_telegram_channels' => Setting::get('deals_telegram_channels', '@dealsmagnet, @lootdeals'),
             'deals_telegram_enabled' => Setting::get('deals_telegram_enabled', '1'),
+            'deals_telegram_api_base' => Setting::get('deals_telegram_api_base', 'https://api.telegram.org'),
             'deals_earnkaro_api_key' => Setting::get('deals_earnkaro_api_key', ''),
             'deals_earnkaro_publisher_id' => Setting::get('deals_earnkaro_publisher_id', ''),
             'deals_earnkaro_api_endpoint' => Setting::get('deals_earnkaro_api_endpoint', 'https://api.earnkaro.com/api/v1/deals/generate'),
@@ -44,6 +45,7 @@ class DealSettingController extends Controller
             'deals_telegram_bot_token' => 'nullable|string|max:255',
             'deals_telegram_channels' => 'nullable|string',
             'deals_telegram_enabled' => 'nullable|boolean',
+            'deals_telegram_api_base' => 'nullable|url',
             'deals_earnkaro_api_key' => 'nullable|string|max:255',
             'deals_earnkaro_publisher_id' => 'nullable|string|max:255',
             'deals_earnkaro_api_endpoint' => 'nullable|url',
@@ -56,6 +58,7 @@ class DealSettingController extends Controller
             'deals_telegram_bot_token' => $validated['deals_telegram_bot_token'] ?? '',
             'deals_telegram_channels' => $validated['deals_telegram_channels'] ?? '',
             'deals_telegram_enabled' => $request->has('deals_telegram_enabled') ? '1' : '0',
+            'deals_telegram_api_base' => !empty($validated['deals_telegram_api_base']) ? rtrim($validated['deals_telegram_api_base'], '/') : 'https://api.telegram.org',
             'deals_earnkaro_api_key' => $validated['deals_earnkaro_api_key'] ?? '',
             'deals_earnkaro_publisher_id' => $validated['deals_earnkaro_publisher_id'] ?? '',
             'deals_earnkaro_api_endpoint' => $validated['deals_earnkaro_api_endpoint'] ?? 'https://api.earnkaro.com/api/v1/deals/generate',
@@ -85,7 +88,25 @@ class DealSettingController extends Controller
     public function testTelegram(Request $request, TelegramDealService $telegramService)
     {
         $token = $request->input('bot_token') ?: Setting::get('deals_telegram_bot_token');
-        $result = $telegramService->testBotToken($token);
+        $apiBase = $request->input('api_base') ?: Setting::get('deals_telegram_api_base', 'https://api.telegram.org');
+        $result = $telegramService->testBotToken($token, $apiBase);
+
+        return response()->json($result);
+    }
+
+    /**
+     * Test public Telegram channel scraping.
+     */
+    public function testChannel(Request $request, TelegramDealService $telegramService)
+    {
+        $channel = $request->input('channel');
+        if (empty($channel)) {
+            $configured = Setting::get('deals_telegram_channels', '@dealsmagnet');
+            $parts = array_filter(array_map('trim', explode(',', $configured)));
+            $channel = reset($parts) ?: '@dealsmagnet';
+        }
+
+        $result = $telegramService->testPublicChannel($channel);
 
         return response()->json($result);
     }

@@ -8,11 +8,11 @@
         <form action="{{ route('admin.deals.settings.update') }}" method="POST">
             @csrf
 
-            <!-- CARD 1: TELEGRAM BOT INTEGRATION -->
+            <!-- CARD 1: TELEGRAM CHANNELS & DEALS AGGREGATION -->
             <div class="card card-outline card-primary shadow-sm mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h3 class="card-title font-weight-bold text-dark">
-                        <i class="fab fa-telegram text-primary mr-2 fa-lg"></i> Telegram Bot Channel Monitor
+                        <i class="fab fa-telegram text-primary mr-2 fa-lg"></i> Telegram Bot Channel Monitor & Deals Aggregation
                     </h3>
                     <div class="custom-control custom-switch">
                         <input type="checkbox" class="custom-control-input" id="deals_telegram_enabled" name="deals_telegram_enabled" value="1" {{ ($settings['deals_telegram_enabled'] ?? '1') == '1' ? 'checked' : '' }}>
@@ -20,13 +20,39 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted small mb-3">
-                        Taskwala monitors configured Telegram channels and extracts offer titles, images, descriptions, prices, discounts, and product URLs automatically.
-                    </p>
+                    <!-- Recommended notice -->
+                    <div class="alert alert-info border-0 shadow-sm py-2 px-3 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-magic fa-lg mr-2 text-info"></i>
+                            <div class="small">
+                                <strong>Public Channel Scraping (Recommended):</strong> You do <u>not</u> need a Telegram Bot Token to fetch deals from public channels. Taskwala's scraper automatically extracts deals, images, and prices directly from public channels without hitting Telegram's API or being blocked by hosting firewalls.
+                            </div>
+                        </div>
+                    </div>
 
-                    <!-- Telegram Bot Token -->
+                    <!-- Configured Channels -->
                     <div class="form-group">
-                        <label class="font-weight-bold">Telegram Bot Token <span class="text-danger">*</span></label>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="font-weight-bold mb-0">Monitored Telegram Channels <span class="text-danger">*</span></label>
+                            <button type="button" class="btn btn-xs btn-outline-success font-weight-bold" id="btnTestChannel" onclick="testChannelScraping()">
+                                <i class="fas fa-play mr-1"></i> Test Channel Scraping
+                            </button>
+                        </div>
+                        <textarea name="deals_telegram_channels" id="telegramChannelsInput" rows="3" class="form-control" placeholder="@dealsmagnet, @lootdeals">{{ $settings['deals_telegram_channels'] ?? '@dealsmagnet, @lootdeals' }}</textarea>
+                        <small class="text-muted">
+                            Enter comma-separated public channel usernames (e.g. <code>@dealsmagnet</code>, <code>@lootdeals</code>).
+                        </small>
+                        <div id="channelTestResult" class="mt-2" style="display: none;"></div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <!-- Telegram Bot Token (Optional) -->
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold">
+                            Telegram Bot Token
+                            <span class="badge badge-light border text-muted ml-1 font-weight-normal">Optional - for private channels</span>
+                        </label>
                         <div class="input-group">
                             <input type="password" name="deals_telegram_bot_token" id="botTokenInput" class="form-control" placeholder="123456789:ABCdefGhIJKlmNoPQRstuVWXyz..." value="{{ $settings['deals_telegram_bot_token'] ?? '' }}">
                             <div class="input-group-append">
@@ -38,17 +64,26 @@
                                 </button>
                             </div>
                         </div>
-                        <small class="text-muted">Obtain from <a href="https://t.me/BotFather" target="_blank" class="font-weight-bold">@BotFather</a> on Telegram. Add this bot as an administrator to your channels.</small>
+                        <small class="text-muted">
+                            Only required if monitoring private channels where your bot is an administrator. Obtain from <a href="https://t.me/BotFather" target="_blank" class="font-weight-bold">@BotFather</a>.
+                        </small>
                         <div id="telegramTestResult" class="mt-2" style="display: none;"></div>
                     </div>
 
-                    <!-- Configured Channels -->
-                    <div class="form-group">
-                        <label class="font-weight-bold">Monitored Telegram Channels <span class="text-danger">*</span></label>
-                        <textarea name="deals_telegram_channels" rows="3" class="form-control" placeholder="@lootdeals, @deals_india, @amazon_flipkart_loot">{{ $settings['deals_telegram_channels'] ?? '' }}</textarea>
-                        <small class="text-muted">
-                            Enter comma-separated channel usernames (e.g. <code>@lootdeals</code>, <code>@hotdealsindia</code>) or channel IDs. Taskwala also supports public channel previews (e.g. <code>t.me/channel_name</code>).
-                        </small>
+                    <!-- Advanced Telegram Proxy URL -->
+                    <div class="form-group mb-0">
+                        <a class="small text-muted font-weight-bold d-inline-block" data-toggle="collapse" href="#advancedTgSettings" role="button" aria-expanded="false" aria-controls="advancedTgSettings">
+                            <i class="fas fa-sliders-h mr-1"></i> Advanced: Custom Telegram API / Proxy URL <i class="fas fa-chevron-down ml-1"></i>
+                        </a>
+                        <div class="collapse mt-2" id="advancedTgSettings">
+                            <div class="p-3 bg-light rounded border">
+                                <label class="font-weight-bold small">Telegram API Base URL</label>
+                                <input type="url" name="deals_telegram_api_base" id="telegramApiBase" class="form-control form-control-sm" value="{{ $settings['deals_telegram_api_base'] ?? 'https://api.telegram.org' }}" placeholder="https://api.telegram.org">
+                                <small class="text-muted d-block mt-1">
+                                    If your hosting firewall blocks direct connection to <code>api.telegram.org</code> (cURL error 28 timeout), you can route Bot requests through a reverse proxy or Cloudflare Worker.
+                                </small>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -265,6 +300,8 @@
 
     function testTelegramConnection() {
         const token = document.getElementById('botTokenInput').value;
+        const apiBaseInput = document.getElementById('telegramApiBase');
+        const apiBase = apiBaseInput ? apiBaseInput.value : '';
         const resultDiv = document.getElementById('telegramTestResult');
         const btn = document.getElementById('btnTestTelegram');
 
@@ -279,7 +316,7 @@
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ bot_token: token })
+            body: JSON.stringify({ bot_token: token, api_base: apiBase })
         })
         .then(res => res.json())
         .then(data => {
@@ -287,7 +324,60 @@
             if (data.success) {
                 resultDiv.innerHTML = '<div class="alert alert-success py-2 px-3 small mb-0"><i class="fas fa-check-circle mr-1"></i> <strong>Success:</strong> ' + data.message + '</div>';
             } else {
-                resultDiv.innerHTML = '<div class="alert alert-danger py-2 px-3 small mb-0"><i class="fas fa-times-circle mr-1"></i> <strong>Error:</strong> ' + data.message + '</div>';
+                let note = '';
+                if (data.is_firewall) {
+                    note = '<div class="mt-2 pt-2 border-top border-white-50 small"><strong>Notice:</strong> Your server cannot connect directly to <code>api.telegram.org</code> due to hosting firewall restrictions. <br><strong>Recommendation:</strong> Use <strong>Public Channel Scraping</strong> (leave Bot Token empty and click "Test Channel Scraping" above), or enter a reverse proxy URL under "Advanced Settings".</div>';
+                }
+                resultDiv.innerHTML = '<div class="alert alert-danger py-2 px-3 small mb-0"><i class="fas fa-times-circle mr-1"></i> <strong>' + (data.is_firewall ? 'Firewall Restricted' : 'Error') + ':</strong> ' + data.message + note + '</div>';
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            resultDiv.innerHTML = '<div class="alert alert-danger py-2 px-3 small mb-0"><i class="fas fa-times-circle mr-1"></i> Request failed: ' + err + '</div>';
+        });
+    }
+
+    function testChannelScraping() {
+        const rawChannels = document.getElementById('telegramChannelsInput').value;
+        const resultDiv = document.getElementById('channelTestResult');
+        const btn = document.getElementById('btnTestChannel');
+
+        // Extract first channel
+        const firstChannel = rawChannels.split(',')[0].trim();
+        if (!firstChannel) {
+            alert('Please enter at least one Telegram channel username (e.g. @dealsmagnet).');
+            return;
+        }
+
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<span class="text-info"><i class="fas fa-spinner fa-spin mr-1"></i> Testing live deal scraping from ' + firstChannel + '...</span>';
+        btn.disabled = true;
+
+        fetch('{{ route("admin.deals.settings.test_channel") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ channel: firstChannel })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            if (data.success) {
+                let sampleHtml = '';
+                if (data.sample) {
+                    sampleHtml = '<div class="mt-2 p-2 bg-white rounded border text-dark font-weight-normal">' +
+                        '<div><strong>Sample Scraped Deal:</strong> ' + (data.sample.title || 'N/A') + '</div>' +
+                        '<div class="text-success font-weight-bold">Price: ' + (data.sample.price ? '₹' + data.sample.price : 'Special Price') +
+                        (data.sample.discount_percent ? ' (' + data.sample.discount_percent + '% OFF)' : '') + '</div>' +
+                        '<div class="text-muted small text-truncate">Link: ' + (data.sample.original_url || '') + '</div>' +
+                        '</div>';
+                }
+                resultDiv.innerHTML = '<div class="alert alert-success py-2 px-3 small mb-0"><i class="fas fa-check-circle mr-1"></i> <strong>' + data.message + '</strong>' + sampleHtml + '</div>';
+            } else {
+                resultDiv.innerHTML = '<div class="alert alert-warning py-2 px-3 small mb-0"><i class="fas fa-exclamation-triangle mr-1"></i> ' + data.message + '</div>';
             }
         })
         .catch(err => {

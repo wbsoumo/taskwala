@@ -12,21 +12,94 @@ class TelegramDealService
     protected ?string $botToken;
     protected array $channels;
     protected bool $enabled;
+    protected string $apiBase;
 
     public function __construct()
     {
         $this->botToken = Setting::get('deals_telegram_bot_token');
-        $rawChannels = Setting::get('deals_telegram_channels', '');
+        $rawChannels = Setting::get('deals_telegram_channels', '@dealsmagnet, @lootdeals');
         $this->channels = array_filter(array_map('trim', explode(',', $rawChannels)));
         $this->enabled = (bool) Setting::get('deals_telegram_enabled', '0');
+        $this->apiBase = rtrim(Setting::get('deals_telegram_api_base', 'https://api.telegram.org'), '/');
+    }
+
+    /**
+     * Test scraping a public Telegram channel directly without needing a Bot token.
+     */
+    public function testPublicChannel(string $channel): array
+    {
+        $channel = trim($channel);
+        if (empty($channel)) {
+            return [
+                'success' => false,
+                'message' => 'Please provide a Telegram channel username (e.g. @dealsmagnet, @lootdeals).',
+            ];
+        }
+
+        $cleanChannel = ltrim($channel, '@');
+        if (str_contains($cleanChannel, 't.me/')) {
+            $parts = explode('t.me/', $cleanChannel);
+            $cleanChannel = trim(explode('/', $parts[1] ?? '')[0]);
+        }
+
+        try {
+            $deals = $this->fetchFromPublicChannelWebPreview($cleanChannel, 10);
+
+            if (!empty($deals)) {
+                $first = $deals[0];
+                $title = \Illuminate\Support\Str::limit($first['title'] ?? 'Deal', 55);
+                $priceText = !empty($first['price']) ? '₹' . number_format($first['price'], 2) : 'Offer';
+                return [
+                    'success' => true,
+                    'channel' => '@' . $cleanChannel,
+                    'count' => count($deals),
+                    'message' => "Successfully connected! Scraped " . count($deals) . " deals from @{$cleanChannel}. Latest: \"{$title}\" ({$priceText}).",
+                    'sample' => [
+                        'title' => $first['title'],
+                        'price' => $first['price'],
+                        'original_price' => $first['original_price'],
+                        'discount_percent' => $first['discount_percent'],
+                        'category' => $first['category'],
+                        'original_url' => $first['original_url'],
+                    ],
+                ];
+            }
+
+            // If no deals parsed, check if page is reachable
+            $url = "https://t.me/s/{$cleanChannel}";
+            $res = Http::timeout(6)->withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept' => 'text/html,application/xhtml+xml',
+            ])->get($url);
+
+            if ($res->successful()) {
+                return [
+                    'success' => true,
+                    'channel' => '@' . $cleanChannel,
+                    'count' => 0,
+                    'message' => "Channel @{$cleanChannel} is reachable! However, no active e-commerce deals were found in recent posts.",
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => "Channel https://t.me/s/{$cleanChannel} returned HTTP {$res->status()}. Please ensure the channel is public.",
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'message' => 'Error testing public channel: ' . $e->getMessage(),
+            ];
+        }
     }
 
     /**
      * Test connection to Telegram Bot API.
      */
-    public function testBotToken(?string $token = null): array
+    public function testBotToken(?string $token = null, ?string $apiBase = null): array
     {
-        $token = $token ?? $this->botToken;
+        $token = trim($token ?? $this->botToken ?? '');
+        $apiBase = rtrim($apiBase ?? $this->apiBase ?? 'https://api.telegram.org', '/');
 
         if (empty($token)) {
             return [
@@ -36,7 +109,7 @@ class TelegramDealService
         }
 
         try {
-            $response = Http::timeout(8)->get("https://api.telegram.org/bot{$token}/getMe");
+            $response = Http::timeout(4)->get("{$apiBase}/bot{$token}/getMe");
 
             if ($response->successful() && ($response->json('ok') === true)) {
                 $user = $response->json('result');
@@ -49,14 +122,31 @@ class TelegramDealService
                 ];
             }
 
+            $desc = $response->json('description') ?? ('HTTP ' . $response->status());
+            if ($response->status() === 401 || str_contains(strtolower($desc), 'unauthorized')) {
+                return [
+                    'success' => false,
+                    'message' => 'Telegram Bot Token is invalid or unauthorized. Please make sure the token is copied completely from @BotFather.',
+                ];
+            }
+
             return [
                 'success' => false,
-                'message' => 'Telegram API Error: ' . ($response->json('description') ?? 'HTTP ' . $response->status()),
+                'message' => 'Telegram API Response: ' . $desc,
             ];
         } catch (\Throwable $e) {
+            $msg = $e->getMessage();
+            if (str_contains($msg, 'cURL error 28') || str_contains($msg, 'timed out')) {
+                return [
+                    'success' => false,
+                    'is_firewall' => true,
+                    'message' => 'Hosting server firewall blocked outbound connection to ' . $apiBase . ' (cURL error 28 timeout). Note: Public channels are fetched automatically via web preview without needing the Bot API, or you can specify a Telegram reverse proxy URL.',
+                ];
+            }
+
             return [
                 'success' => false,
-                'message' => 'Telegram connection failed: ' . $e->getMessage(),
+                'message' => 'Telegram connection failed: ' . $msg,
             ];
         }
     }
@@ -98,7 +188,7 @@ class TelegramDealService
         $offset = $lastUpdateId ? $lastUpdateId + 1 : 0;
 
         try {
-            $url = "https://api.telegram.org/bot{$this->botToken}/getUpdates";
+            $url = "{$this->apiBase}/bot{$this->botToken}/getUpdates";
             $response = Http::timeout(10)->get($url, [
                 'offset' => $offset,
                 'limit' => min($limit, 100),
@@ -176,14 +266,14 @@ class TelegramDealService
         if (empty($this->botToken)) return null;
 
         try {
-            $res = Http::timeout(5)->get("https://api.telegram.org/bot{$this->botToken}/getFile", [
+            $res = Http::timeout(5)->get("{$this->apiBase}/bot{$this->botToken}/getFile", [
                 'file_id' => $fileId,
             ]);
 
             if ($res->successful() && $res->json('ok')) {
                 $filePath = $res->json('result.file_path');
                 if ($filePath) {
-                    return "https://api.telegram.org/file/bot{$this->botToken}/{$filePath}";
+                    return "{$this->apiBase}/file/bot{$this->botToken}/{$filePath}";
                 }
             }
         } catch (\Throwable $e) {

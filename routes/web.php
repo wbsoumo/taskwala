@@ -78,6 +78,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/deals-settings', [\App\Http\Controllers\Admin\DealSettingController::class, 'settings'])->name('deals.settings');
         Route::post('/deals-settings', [\App\Http\Controllers\Admin\DealSettingController::class, 'updateSettings'])->name('deals.settings.update');
         Route::post('/deals-settings/test-telegram', [\App\Http\Controllers\Admin\DealSettingController::class, 'testTelegram'])->name('deals.settings.test_telegram');
+        Route::post('/deals-settings/test-channel', [\App\Http\Controllers\Admin\DealSettingController::class, 'testChannel'])->name('deals.settings.test_channel');
         Route::post('/deals-settings/test-earnkaro', [\App\Http\Controllers\Admin\DealSettingController::class, 'testEarnkaro'])->name('deals.settings.test_earnkaro');
         Route::post('/deals-settings/sync-now', [\App\Http\Controllers\Admin\DealSettingController::class, 'syncNow'])->name('deals.settings.sync_now');
         Route::get('/deals-logs', [\App\Http\Controllers\Admin\DealSettingController::class, 'logs'])->name('deals.logs');
@@ -156,8 +157,8 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
     }
     try {
         $pullOutput = '';
-        if ($request->boolean('pull')) {
-            $pullOutput = shell_exec('git pull origin main 2>&1') ?? 'git pull executed.';
+        if ($request->boolean('pull') && function_exists('shell_exec')) {
+            $pullOutput = @shell_exec('git pull origin main 2>&1') ?? 'git pull executed.';
         }
 
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
