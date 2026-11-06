@@ -205,8 +205,13 @@ Route::get('/system/debug-status/{token}', function ($token, \Illuminate\Http\Re
 
     $gitHead = shell_exec('git log -1 --oneline 2>&1') ?? 'N/A';
 
+    $tgApiProbe = shell_exec('curl -s -m 4 -I https://api.telegram.org 2>&1') ?? 'null';
+    $tgWebProbe = shell_exec('curl -s -m 4 -I https://t.me/s/lootdeals 2>&1') ?? 'null';
+
     return response()->json([
         'git_head' => trim($gitHead),
+        'tg_api_probe' => trim($tgApiProbe),
+        'tg_web_probe' => trim($tgWebProbe),
         'deals_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deals'),
         'deal_sync_logs_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deal_sync_logs'),
         'campaign_count' => \App\Models\Campaign::count(),
