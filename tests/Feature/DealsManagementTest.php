@@ -201,6 +201,11 @@ class DealsManagementTest extends TestCase
         $this->assertEquals('PUB_777', Setting::get('deals_earnkaro_publisher_id'));
 
         Http::fake([
+            'https://ekaro-api.affiliaters.in/*' => Http::response([
+                'success' => 1,
+                'data' => 'https://ekaro.in/sample_test',
+                'randomPostID' => 'rhrh7ov',
+            ], 200),
             'https://api.earnkaro.com/*' => Http::response([
                 'status' => 'success',
                 'converted_url' => 'https://ekaro.in/sample_test',
@@ -318,5 +323,35 @@ class DealsManagementTest extends TestCase
         $this->assertDatabaseHas('deal_sync_logs', [
             'channel' => 'All Channels',
         ]);
+    }
+
+    public function test_earnkaro_converter_api_handles_success_and_error_cases()
+    {
+        Setting::set('deals_earnkaro_enabled', '1');
+        Setting::set('deals_earnkaro_api_key', 'TEST_TOKEN_123');
+        Setting::set('deals_earnkaro_publisher_id', 'PUB_TEST');
+
+        Http::fakeSequence()
+            ->push(['success' => 1, 'data' => 'Check this out https://ekaro.in/converted123', 'randomPostID' => 'rhrh7ov'], 200)
+            ->push(['error' => 1, 'message' => 'Please authenticate'], 401)
+            ->push(['error' => 1, 'message' => 'Too many requests from this API key, please try again after a minute.'], 429);
+
+        $earnkaro = app(EarnKaroService::class);
+
+        // 1. Success test
+        $res = $earnkaro->convertUrl('https://www.amazon.in/dp/B08L5WHJ43');
+        $this->assertTrue($res['success']);
+        $this->assertEquals('https://ekaro.in/converted123', $res['affiliate_url']);
+
+        // 2. Auth error (401)
+        $resAuth = $earnkaro->convertUrl('https://www.amazon.in/dp/B08L5WHJ43');
+        $this->assertTrue($resAuth['success']);
+        $this->assertStringContainsString('PUB_TEST', $resAuth['affiliate_url']);
+        $this->assertStringContainsString('Authentication Error (401)', $resAuth['error']);
+
+        // 3. Rate Limit test (429)
+        $resRate = $earnkaro->testConnection('TEST_TOKEN_123');
+        $this->assertFalse($resRate['success']);
+        $this->assertStringContainsString('Rate Limit Exceeded', $resRate['message']);
     }
 }

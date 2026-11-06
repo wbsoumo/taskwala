@@ -109,8 +109,11 @@
 
                     <!-- API Endpoint -->
                     <div class="form-group">
-                        <label class="font-weight-bold">API Conversion Endpoint</label>
-                        <input type="url" name="deals_earnkaro_api_endpoint" id="earnkaroEndpoint" class="form-control" value="{{ $settings['deals_earnkaro_api_endpoint'] ?? 'https://api.earnkaro.com/api/v1/deals/generate' }}">
+                        <label class="font-weight-bold">EarnKaro Converter Base URL</label>
+                        <input type="url" name="deals_earnkaro_api_endpoint" id="earnkaroEndpoint" class="form-control font-monospace" value="{{ $settings['deals_earnkaro_api_endpoint'] ?? 'https://ekaro-api.affiliaters.in/api/converter/public' }}">
+                        <small class="text-muted d-block mt-1">
+                            Official EarnKaro Converter API (<code>https://ekaro-api.affiliaters.in/api/converter/public</code>). Rate limit: 60 requests/min.
+                        </small>
                     </div>
 
                     <!-- Test Button -->
