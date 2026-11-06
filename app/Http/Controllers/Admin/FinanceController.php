@@ -24,11 +24,131 @@ class FinanceController extends Controller
 
     public function customerPayouts(Request $request)
     {
-        $payouts = CustomerPayout::with(['conversion.campaign', 'conversion.user'])
-            ->latest()
-            ->paginate(25);
+        $query = CustomerPayout::with(['conversion.campaign', 'conversion.user', 'processedByAdmin']);
 
-        return view('admin.finance.customer_payouts', compact('payouts'));
+        // Filter by Status
+        if ($request->filled('status') && $request->status !== 'all') {
+            if ($request->status === 'done') {
+                $query->whereIn('status', ['done', 'processed']);
+            } else {
+                $query->where('status', $request->status);
+            }
+        }
+
+        // Filter by Date Range
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        // Search Filter (UPI, Holder Name, Customer Name, Mobile, Transaction ID, Conversion ID, Campaign Name, Affiliate)
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('upi_id', 'like', "%{$search}%")
+                    ->orWhere('upi_holder_name', 'like', "%{$search}%")
+                    ->orWhere('customer_name', 'like', "%{$search}%")
+                    ->orWhere('mobile_number', 'like', "%{$search}%")
+                    ->orWhere('transaction_id', 'like', "%{$search}%")
+                    ->orWhere('click_id', 'like', "%{$search}%");
+
+                if (is_numeric($search)) {
+                    $q->orWhere('conversion_id', (int) $search);
+                }
+
+                $q->orWhereHas('conversion.campaign', function ($c) use ($search) {
+                    $c->where('name', 'like', "%{$search}%");
+                });
+
+                $q->orWhereHas('conversion.user', function ($u) use ($search) {
+                    $u->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        // Summary Statistics for Quick Stats Cards
+        $stats = [
+            'total_count' => CustomerPayout::count(),
+            'total_amount' => (float) CustomerPayout::sum('payout_amount'),
+            'pending_count' => CustomerPayout::where('status', 'pending')->count(),
+            'pending_amount' => (float) CustomerPayout::where('status', 'pending')->sum('payout_amount'),
+            'initiated_count' => CustomerPayout::where('status', 'initiated')->count(),
+            'initiated_amount' => (float) CustomerPayout::where('status', 'initiated')->sum('payout_amount'),
+            'done_count' => CustomerPayout::whereIn('status', ['done', 'processed'])->count(),
+            'done_amount' => (float) CustomerPayout::whereIn('status', ['done', 'processed'])->sum('payout_amount'),
+            'failed_count' => CustomerPayout::where('status', 'failed')->count(),
+            'failed_amount' => (float) CustomerPayout::where('status', 'failed')->sum('payout_amount'),
+            'cancel_count' => CustomerPayout::where('status', 'cancel')->count(),
+            'cancel_amount' => (float) CustomerPayout::where('status', 'cancel')->sum('payout_amount'),
+        ];
+
+        $payouts = $query->latest()->paginate(25)->withQueryString();
+
+        return view('admin.finance.customer_payouts', compact('payouts', 'stats'));
+    }
+
+    public function updateCustomerPayoutStatus(Request $request, int $id)
+    {
+        $payout = CustomerPayout::findOrFail($id);
+
+        $validated = $request->validate([
+            'status' => ['required', 'string', 'in:pending,initiated,done,failed,cancel'],
+            'transaction_id' => ['nullable', 'string', 'max:128'],
+            'admin_notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $admin = auth('admin')->user();
+
+        $updateData = [
+            'status' => $validated['status'],
+            'admin_notes' => $validated['admin_notes'] ?? $payout->admin_notes,
+            'processed_at' => now(),
+            'processed_by_admin_id' => $admin?->id,
+        ];
+
+        if ($request->filled('transaction_id')) {
+            $updateData['transaction_id'] = $validated['transaction_id'];
+        } elseif ($validated['status'] === 'done' && empty($payout->transaction_id)) {
+            $updateData['transaction_id'] = 'UPI_' . strtoupper(bin2hex(random_bytes(6)));
+        }
+
+        $payout->update($updateData);
+
+        return redirect()->back()->with('success', "Customer Payout #{$id} status updated to " . ucfirst($validated['status']) . " successfully.");
+    }
+
+    public function bulkUpdateCustomerPayoutStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'selected_ids' => ['required', 'array', 'min:1'],
+            'selected_ids.*' => ['integer', 'exists:customer_payouts,id'],
+            'bulk_status' => ['required', 'string', 'in:pending,initiated,done,failed,cancel'],
+            'bulk_transaction_id' => ['nullable', 'string', 'max:128'],
+            'bulk_admin_notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $admin = auth('admin')->user();
+        $targetStatus = $validated['bulk_status'];
+
+        $updateData = [
+            'status' => $targetStatus,
+            'processed_at' => now(),
+            'processed_by_admin_id' => $admin?->id,
+        ];
+
+        if ($request->filled('bulk_transaction_id')) {
+            $updateData['transaction_id'] = $validated['bulk_transaction_id'];
+        }
+        if ($request->filled('bulk_admin_notes')) {
+            $updateData['admin_notes'] = $validated['bulk_admin_notes'];
+        }
+
+        $affected = CustomerPayout::whereIn('id', $validated['selected_ids'])->update($updateData);
+
+        return redirect()->back()->with('success', "Bulk updated {$affected} customer payout(s) to " . ucfirst($targetStatus) . " successfully.");
     }
 
     public function affiliatePayouts(Request $request)

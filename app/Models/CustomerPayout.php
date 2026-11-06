@@ -19,12 +19,17 @@ class CustomerPayout extends Model
         'mobile_number',
         'payout_amount',
         'status',
+        'transaction_id',
+        'admin_notes',
+        'processed_at',
+        'processed_by_admin_id',
     ];
 
     protected function casts(): array
     {
         return [
             'payout_amount' => 'decimal:2',
+            'processed_at' => 'datetime',
         ];
     }
 
@@ -36,5 +41,10 @@ class CustomerPayout extends Model
     public function link()
     {
         return $this->belongsTo(AffiliateLink::class, 'link_id');
+    }
+
+    public function processedByAdmin()
+    {
+        return $this->belongsTo(User::class, 'processed_by_admin_id');
     }
 }

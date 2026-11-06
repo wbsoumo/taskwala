@@ -84,6 +84,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/finance/affiliate-payouts/{id}/process', [AdminFinanceController::class, 'processAffiliatePayout'])->name('finance.affiliate_payouts.process');
         Route::get('/finance/wallet-ledger', [AdminFinanceController::class, 'ledger'])->name('finance.ledger');
         Route::get('/finance/customer-payouts', [AdminFinanceController::class, 'customerPayouts'])->name('finance.customer_payouts');
+        Route::post('/finance/customer-payouts/{id}/update-status', [AdminFinanceController::class, 'updateCustomerPayoutStatus'])->name('finance.customer_payouts.update_status');
+        Route::post('/finance/customer-payouts/bulk-update', [AdminFinanceController::class, 'bulkUpdateCustomerPayoutStatus'])->name('finance.customer_payouts.bulk_update');
 
         // Reports
         Route::get('/reports/performance', [AdminReportController::class, 'performance'])->name('reports.performance');
