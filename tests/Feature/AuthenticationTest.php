@@ -153,4 +153,30 @@ class AuthenticationTest extends TestCase
 
         $verifyRes->assertStatus(200)->assertJson(['success' => true]);
     }
+
+    public function test_web_forgot_password_flow_has_no_debug_mode()
+    {
+        $user = User::create([
+            'name' => 'Web Partner',
+            'email' => 'webpartner@test.com',
+            'mobile_number' => '9876543211',
+            'password' => Hash::make('OldPassword123!'),
+            'status' => 'active',
+            'email_verified_at' => now(),
+        ]);
+
+        // Request reset code
+        $postResponse = $this->post(route('user.password.email'), [
+            'login' => 'webpartner@test.com',
+        ]);
+
+        $postResponse->assertRedirect(route('user.password.reset'));
+        $this->assertNull(session('debug_otp'));
+
+        // Visit reset form
+        $resetFormResponse = $this->get(route('user.password.reset'));
+        $resetFormResponse->assertStatus(200);
+        $resetFormResponse->assertDontSee('Dev Code');
+        $resetFormResponse->assertDontSee('debug_otp');
+    }
 }

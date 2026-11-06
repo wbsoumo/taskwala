@@ -61,7 +61,7 @@ class ForgotPasswordController extends Controller
             Log::warning('Password reset email error: ' . $e->getMessage());
         }
 
-        session(['reset_login' => $login, 'debug_otp' => $otp]);
+        session(['reset_login' => $login]);
 
         return redirect()->route('user.password.reset')->with('status', 'Verification code sent successfully. Please check your contact/email.');
     }
@@ -71,7 +71,6 @@ class ForgotPasswordController extends Controller
         $login = session('reset_login', $request->query('login', ''));
         return view('user.auth.reset-password', [
             'login' => $login,
-            'debug_otp' => session('debug_otp'),
         ]);
     }
 
@@ -114,7 +113,7 @@ class ForgotPasswordController extends Controller
         DB::table('password_reset_tokens')->where('email', $user->email)->delete();
         $user->tokens()->delete();
 
-        session()->forget(['reset_login', 'debug_otp']);
+        session()->forget('reset_login');
 
         return redirect()->route('user.login')->with('status', 'Your password has been reset successfully. You can now log in.');
     }
