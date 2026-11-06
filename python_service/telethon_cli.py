@@ -7,9 +7,15 @@ Allows executing Telegram MTProto commands directly without requiring a backgrou
 import argparse
 import asyncio
 import json
+import logging
 import os
 import sys
 from pathlib import Path
+
+# Silence all Telethon and internal loggers on stdout
+logging.basicConfig(level=logging.ERROR, stream=sys.stderr)
+for _log in ["telethon", "telethon.network", "telethon.client", "telethon_manager"]:
+    logging.getLogger(_log).setLevel(logging.ERROR)
 
 # Add python_service directory to sys.path
 SCRIPT_DIR = Path(__file__).resolve().parent

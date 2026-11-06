@@ -386,10 +386,32 @@ class TelethonClientService
 
         $res = $this->execProc($cmd, 60);
 
-        if (!empty($res['stdout'])) {
-            $json = json_decode($res['stdout'], true);
+        $rawStdout = trim($res['stdout'] ?? '');
+        if (!empty($rawStdout)) {
+            // 1. Direct JSON decode
+            $json = json_decode($rawStdout, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($json)) {
                 return $json;
+            }
+
+            // 2. Line-by-line search for JSON
+            $lines = explode("\n", $rawStdout);
+            foreach (array_reverse($lines) as $line) {
+                $trimmed = trim($line);
+                if (str_starts_with($trimmed, '{') && str_ends_with($trimmed, '}')) {
+                    $json = json_decode($trimmed, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($json)) {
+                        return $json;
+                    }
+                }
+            }
+
+            // 3. Regex fallback for JSON object
+            if (preg_match('/\{.*\}/s', $rawStdout, $matches)) {
+                $json = json_decode($matches[0], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($json)) {
+                    return $json;
+                }
             }
         }
 

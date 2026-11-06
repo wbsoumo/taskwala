@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -20,7 +21,7 @@ from telethon.tl.types import Channel, Chat, User, MessageEntityTextUrl, Message
 from config import API_ID, API_HASH, MEDIA_STORAGE_DIR
 
 logger = logging.getLogger("telethon_manager")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(level=logging.WARNING, stream=sys.stderr, format="%(asctime)s [%(levelname)s] %(message)s")
 
 
 class TelethonManager:
