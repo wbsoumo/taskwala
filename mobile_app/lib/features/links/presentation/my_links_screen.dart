@@ -11,6 +11,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/bouncing_card.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../../shared/widgets/campaign_logo.dart';
 
 class MyLinksScreen extends ConsumerStatefulWidget {
   const MyLinksScreen({super.key});
@@ -123,7 +124,6 @@ class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
                   itemCount: links.length,
                   itemBuilder: (context, index) {
                     final link = links[index];
-                    final catColors = AppColors.getCategoryColors(link.campaignName);
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 14),
@@ -139,26 +139,12 @@ class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
                         children: [
                           Row(
                             children: [
-                              Container(
-                                width: 46,
-                                height: 46,
-                                decoration: BoxDecoration(
-                                  color: catColors.bg,
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: catColors.fg.withValues(alpha: 0.2),
-                                    width: 1,
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  link.campaignName.isNotEmpty ? link.campaignName[0] : 'L',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: catColors.fg,
-                                  ),
-                                ),
+                              CampaignLogo(
+                                logoUrl: link.campaignLogo,
+                                name: link.campaignName,
+                                category: link.category,
+                                size: 46,
+                                borderRadius: 14,
                               ),
                               const SizedBox(width: 14),
                               Expanded(

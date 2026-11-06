@@ -39,6 +39,10 @@ class Campaign extends Model
         'updated_by',
     ];
 
+    protected $appends = [
+        'logo',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -48,6 +52,19 @@ class Campaign extends Model
             'start_date' => 'datetime',
             'end_date' => 'datetime',
         ];
+    }
+
+    public function getLogoAttribute(): ?string
+    {
+        if (empty($this->logo_url)) {
+            return null;
+        }
+
+        if (str_starts_with($this->logo_url, 'http://') || str_starts_with($this->logo_url, 'https://')) {
+            return $this->logo_url;
+        }
+
+        return url($this->logo_url);
     }
 
     protected static function boot()

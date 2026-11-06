@@ -14,6 +14,7 @@ import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/bouncing_card.dart';
 import '../../../shared/widgets/animated_counter.dart';
 import '../../../shared/widgets/category_badge.dart';
+import '../../../shared/widgets/campaign_logo.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -504,7 +505,6 @@ class DashboardScreen extends ConsumerWidget {
                     itemCount: campaigns.take(3).length,
                     itemBuilder: (context, index) {
                       final c = campaigns[index];
-                      final catColors = AppColors.getCategoryColors(c.category);
 
                       return BouncingCard(
                         onTap: () => context.push('/link-generator', extra: c),
@@ -519,26 +519,12 @@ class DashboardScreen extends ConsumerWidget {
                           ),
                           child: Row(
                             children: [
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: catColors.bg,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: catColors.fg.withValues(alpha: 0.2),
-                                    width: 1,
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  c.name.isNotEmpty ? c.name[0] : 'O',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    color: catColors.fg,
-                                  ),
-                                ),
+                              CampaignLogo(
+                                logoUrl: c.logo,
+                                name: c.name,
+                                category: c.category,
+                                size: 48,
+                                borderRadius: 16,
                               ),
                               const SizedBox(width: 14),
                               Expanded(

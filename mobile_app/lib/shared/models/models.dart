@@ -98,7 +98,7 @@ class Campaign {
       id: fallbackId,
       publicId: pubId,
       name: json['name']?.toString() ?? '',
-      logo: json['logo']?.toString(),
+      logo: (json['logo'] ?? json['logo_url'])?.toString(),
       category: json['category']?.toString() ?? 'General',
       advertiserPayout: _parseDouble(json['advertiser_payout'] ?? json['payout_amount']),
       affiliatePayout: _parseDouble(json['allocated_affiliate_payout'] ?? json['affiliate_payout'] ?? json['user_payout'] ?? json['payout_amount']),
@@ -116,6 +116,8 @@ class AffiliateLink {
   final int id;
   final int campaignId;
   final String campaignName;
+  final String? campaignLogo;
+  final String category;
   final String secureUrl;
   final String code;
   final double customerPayout;
@@ -128,6 +130,8 @@ class AffiliateLink {
     required this.id,
     required this.campaignId,
     required this.campaignName,
+    this.campaignLogo,
+    this.category = 'General',
     required this.secureUrl,
     required this.code,
     required this.customerPayout,
@@ -150,6 +154,8 @@ class AffiliateLink {
       id: parsedId != 0 ? parsedId : (json['public_id']?.toString().hashCode.abs() ?? 0),
       campaignId: parsedCampId != 0 ? parsedCampId : 1,
       campaignName: json['campaign_name']?.toString() ?? json['campaign']?['name']?.toString() ?? 'Campaign',
+      campaignLogo: (json['campaign_logo'] ?? json['campaign']?['logo'] ?? json['campaign']?['logo_url'])?.toString(),
+      category: json['category']?.toString() ?? json['campaign']?['category']?.toString() ?? 'General',
       secureUrl: url,
       code: token,
       customerPayout: _parseDouble(json['customer_payout']),
@@ -164,24 +170,40 @@ class AffiliateLink {
 class ClickReport {
   final int id;
   final String campaignName;
+  final String? campaignLogo;
+  final String category;
   final String linkCode;
   final String ipAddress;
+  final String status;
+  final bool isConverted;
+  final double affiliateCommission;
   final String clickedAt;
 
   ClickReport({
     required this.id,
     required this.campaignName,
+    this.campaignLogo,
+    this.category = 'General',
     required this.linkCode,
     required this.ipAddress,
+    this.status = 'valid',
+    this.isConverted = false,
+    this.affiliateCommission = 0.0,
     required this.clickedAt,
   });
 
   factory ClickReport.fromJson(Map<String, dynamic> json) {
+    final isConv = json['conversion'] != null || json['is_converted'] == true || json['is_converted'] == 1;
     return ClickReport(
       id: _parseInt(json['id']),
       campaignName: json['campaign_name']?.toString() ?? json['campaign']?['name']?.toString() ?? 'Campaign',
-      linkCode: json['link_code']?.toString() ?? json['link']?['code']?.toString() ?? json['link']?['secure_token']?.toString() ?? 'N/A',
+      campaignLogo: (json['campaign_logo'] ?? json['campaign']?['logo'] ?? json['campaign']?['logo_url'])?.toString(),
+      category: json['category']?.toString() ?? json['campaign']?['category']?.toString() ?? 'General',
+      linkCode: json['link_code']?.toString() ?? json['link']?['code']?.toString() ?? json['link']?['secure_token']?.toString() ?? json['click_id']?.toString() ?? 'N/A',
       ipAddress: json['ip_address']?.toString() ?? 'Masked',
+      status: json['status']?.toString() ?? (isConv ? 'converted' : 'valid'),
+      isConverted: isConv,
+      affiliateCommission: _parseDouble(json['affiliate_commission'] ?? json['commission']),
       clickedAt: json['created_at']?.toString() ?? json['clicked_at']?.toString() ?? '',
     );
   }
@@ -190,6 +212,8 @@ class ClickReport {
 class ConversionReport {
   final int id;
   final String campaignName;
+  final String? campaignLogo;
+  final String category;
   final String referenceId;
   final double customerPayout;
   final double commission;
@@ -200,6 +224,8 @@ class ConversionReport {
   ConversionReport({
     required this.id,
     required this.campaignName,
+    this.campaignLogo,
+    this.category = 'General',
     required this.referenceId,
     required this.customerPayout,
     required this.commission,
@@ -213,9 +239,11 @@ class ConversionReport {
     return ConversionReport(
       id: parsedId,
       campaignName: json['campaign_name']?.toString() ?? json['campaign']?['name']?.toString() ?? 'Campaign',
-      referenceId: json['reference_id']?.toString() ?? json['click_id']?.toString() ?? 'REF-$parsedId',
-      customerPayout: _parseDouble(json['customer_payout']),
-      commission: _parseDouble(json['commission'] ?? json['affiliate_commission']),
+      campaignLogo: (json['campaign_logo'] ?? json['campaign']?['logo'] ?? json['campaign']?['logo_url'])?.toString(),
+      category: json['category']?.toString() ?? json['campaign']?['category']?.toString() ?? 'General',
+      referenceId: json['reference_id']?.toString() ?? json['click_id']?.toString() ?? json['public_id']?.toString() ?? 'REF-$parsedId',
+      customerPayout: _parseDouble(json['customer_payout'] ?? json['customerPayout']?['amount']),
+      commission: _parseDouble(json['commission'] ?? json['affiliate_commission'] ?? json['payoutSnapshot']?['affiliate_payout']),
       status: json['status']?.toString() ?? 'pending',
       payoutStatus: json['payout_status']?.toString() ?? 'unpaid',
       createdAt: json['conversion_time']?.toString() ?? json['created_at']?.toString() ?? '',

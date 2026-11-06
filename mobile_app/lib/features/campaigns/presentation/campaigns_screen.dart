@@ -14,6 +14,7 @@ import '../../../shared/widgets/bouncing_card.dart';
 import '../../../shared/widgets/category_badge.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/campaign_logo.dart';
 
 class CampaignsScreen extends ConsumerStatefulWidget {
   const CampaignsScreen({super.key});
@@ -197,7 +198,6 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           final c = filtered[index];
-                          final catColors = AppColors.getCategoryColors(c.category);
 
                           return BouncingCard(
                             onTap: () => context.push('/link-generator', extra: c),
@@ -213,27 +213,13 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Category Icon / Avatar
-                                  Container(
-                                    width: 52,
-                                    height: 52,
-                                    decoration: BoxDecoration(
-                                      color: catColors.bg,
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: catColors.fg.withValues(alpha: 0.2),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      c.name.isNotEmpty ? c.name[0] : 'C',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w800,
-                                        color: catColors.fg,
-                                      ),
-                                    ),
+                                  // Campaign Logo / Avatar
+                                  CampaignLogo(
+                                    logoUrl: c.logo,
+                                    name: c.name,
+                                    category: c.category,
+                                    size: 52,
+                                    borderRadius: 16,
                                   ),
                                   const SizedBox(width: 14),
                                   Expanded(
@@ -541,7 +527,6 @@ class _EarnTaskBottomSheetState extends ConsumerState<_EarnTaskBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final catColors = AppColors.getCategoryColors(widget.campaign.category);
     final payoutStr = '₹${widget.campaign.affiliatePayout.toStringAsFixed(0)}';
 
     return SafeArea(
@@ -575,26 +560,12 @@ class _EarnTaskBottomSheetState extends ConsumerState<_EarnTaskBottomSheet> {
             // Header Row
             Row(
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: catColors.bg,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: catColors.fg.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    widget.campaign.name.isNotEmpty ? widget.campaign.name[0] : 'T',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: catColors.fg,
-                    ),
-                  ),
+                CampaignLogo(
+                  logoUrl: widget.campaign.logo,
+                  name: widget.campaign.name,
+                  category: widget.campaign.category,
+                  size: 48,
+                  borderRadius: 14,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

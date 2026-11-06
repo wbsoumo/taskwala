@@ -30,6 +30,8 @@ class CampaignController extends Controller
                     'name' => $c->name,
                     'category' => $c->category,
                     'short_description' => $c->short_description,
+                    'logo' => $c->logo,
+                    'logo_url' => $c->logo,
                     'advertiser_payout' => (float) $c->advertiser_payout,
                     'allocated_affiliate_payout' => $this->campaignService->getAffiliatePayout($c, $user),
                     'currency' => $c->currency,
