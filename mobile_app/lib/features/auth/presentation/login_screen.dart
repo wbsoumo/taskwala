@@ -80,15 +80,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 // Brand Logo Header with Glow & Entrance Animation
                 Center(
                   child: Container(
-                    width: 76,
-                    height: 76,
+                    width: 84,
+                    height: 84,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primaryGradientStart, AppColors.primaryGradientEnd],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(22),
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.primary.withValues(alpha: 0.35),
@@ -97,10 +92,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.bolt_rounded,
-                      size: 44,
-                      color: Colors.white,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: Image.asset(
+                        'assets/images/app_logo.png',
+                        width: 84,
+                        height: 84,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
