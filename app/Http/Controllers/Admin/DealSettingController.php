@@ -32,8 +32,10 @@ class DealSettingController extends Controller
         ];
 
         $recentLogs = DealSyncLog::orderBy('created_at', 'desc')->take(5)->get();
+        $telegramAccount = \App\Models\TelegramAccount::first();
+        $monitoredChannelsCount = \App\Models\TelegramMonitoredChannel::where('is_monitored', true)->count();
 
-        return view('admin.deals.settings', compact('settings', 'recentLogs'));
+        return view('admin.deals.settings', compact('settings', 'recentLogs', 'telegramAccount', 'monitoredChannelsCount'));
     }
 
     /**
@@ -83,15 +85,14 @@ class DealSettingController extends Controller
     }
 
     /**
-     * Test Telegram Bot Token connection.
+     * Test Telegram Bot Token connection (legacy endpoint, replaced by MTProto).
      */
     public function testTelegram(Request $request, TelegramDealService $telegramService)
     {
-        $token = $request->input('bot_token') ?: Setting::get('deals_telegram_bot_token');
-        $apiBase = $request->input('api_base') ?: Setting::get('deals_telegram_api_base', 'https://api.telegram.org');
-        $result = $telegramService->testBotToken($token, $apiBase);
-
-        return response()->json($result);
+        return response()->json([
+            'success' => true,
+            'message' => 'Telegram Bot API is replaced by the Telegram MTProto Scraper.',
+        ]);
     }
 
     /**
@@ -100,8 +101,6 @@ class DealSettingController extends Controller
     public function testChannel(Request $request, TelegramDealService $telegramService)
     {
         $channel = $request->input('channel');
-        $botToken = $request->input('bot_token') ?: Setting::get('deals_telegram_bot_token');
-        $apiBase = $request->input('api_base') ?: Setting::get('deals_telegram_api_base', 'https://api.telegram.org');
 
         if (empty($channel)) {
             $configured = Setting::get('deals_telegram_channels', '@dealsmagnet');
@@ -109,7 +108,7 @@ class DealSettingController extends Controller
             $channel = reset($parts) ?: '@dealsmagnet';
         }
 
-        $result = $telegramService->testPublicChannel($channel, $botToken, $apiBase);
+        $result = $telegramService->testPublicChannel($channel);
 
         return response()->json($result);
     }

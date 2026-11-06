@@ -182,7 +182,7 @@ class DealsManagementTest extends TestCase
         $this->actingAs($this->admin, 'admin')
             ->get(route('admin.deals.settings'))
             ->assertOk()
-            ->assertSee('Telegram Bot Channel Monitor')
+            ->assertSee('Telegram Channels')
             ->assertSee('EarnKaro Affiliate API Integration');
 
         $updateResponse = $this->actingAs($this->admin, 'admin')
