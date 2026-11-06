@@ -96,8 +96,15 @@ async def cmd_verify_code(args):
     api_hash = args.api_hash or API_HASH
     phone = args.phone.strip()
     code = args.code.strip()
-    phone_code_hash = args.hash or args.phone_code_hash
+    phone_code_hash = getattr(args, 'hash', None) or getattr(args, 'phone_code_hash', None) or ""
     session_str = args.session or ""
+
+    if not phone_code_hash and not session_str:
+        print(json.dumps({
+            "success": False,
+            "error": "No active verification session found. Please click 'Send Telegram OTP' to request a code first."
+        }))
+        return
 
     manager = TelethonManager()
     client = get_client(session_str, api_id, api_hash)
@@ -105,7 +112,7 @@ async def cmd_verify_code(args):
     try:
         await client.connect()
         try:
-            user = await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
+            user = await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash or None)
             saved_session = client.session.save()
             print(json.dumps({
                 "success": True,
