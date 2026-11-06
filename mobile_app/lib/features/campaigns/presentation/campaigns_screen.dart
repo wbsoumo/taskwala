@@ -406,6 +406,7 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
   void _showEarnTaskModal(BuildContext context, Campaign campaign) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _EarnTaskBottomSheet(campaign: campaign),
@@ -521,13 +522,17 @@ class _EarnTaskBottomSheetState extends ConsumerState<_EarnTaskBottomSheet> {
     final catColors = AppColors.getCategoryColors(widget.campaign.category);
     final payoutStr = '₹${widget.campaign.affiliatePayout.toStringAsFixed(0)}';
 
-    return Container(
-      padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 24),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: SingleChildScrollView(
+    return SafeArea(
+      top: false,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.88,
+        ),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 16),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -537,7 +542,7 @@ class _EarnTaskBottomSheetState extends ConsumerState<_EarnTaskBottomSheet> {
               child: Container(
                 width: 44,
                 height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
+                margin: const EdgeInsets.only(bottom: 14),
                 decoration: BoxDecoration(
                   color: AppColors.border,
                   borderRadius: BorderRadius.circular(4),
@@ -596,253 +601,266 @@ class _EarnTaskBottomSheetState extends ConsumerState<_EarnTaskBottomSheet> {
               ],
             ),
 
-            const SizedBox(height: 18),
-
-            // Vibrant Reward Highlight Banner
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: AppShadows.soft,
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.3),
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.account_balance_wallet_rounded,
-                      color: Color(0xFF10B981),
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'TASK REWARD',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                            color: const Color(0xFF10B981),
-                          ),
-                        ),
-                        Text(
-                          'Earn $payoutStr',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          'Credited directly to your wallet on task completion',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // How it works steps
-            Text(
-              'How to Complete',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildStepRow(
-              number: '1',
-              title: 'Open Partner Link',
-              subtitle: 'Tap the button below to launch the official campaign task.',
-            ),
-            _buildStepRow(
-              number: '2',
-              title: 'Complete Target Event',
-              subtitle: widget.campaign.terms != null && widget.campaign.terms!.isNotEmpty
-                  ? widget.campaign.terms!
-                  : 'Follow instructions and complete the required action.',
-            ),
-            _buildStepRow(
-              number: '3',
-              title: 'Receive Reward',
-              subtitle: '$payoutStr automatically credited to your wallet once confirmed.',
-              isLast: true,
-            ),
-
             const SizedBox(height: 14),
 
-            // Anti-Fraud & Duplicate IP Status Card
-            if (widget.campaign.checkDuplicateIp) ...[
-              if (_isLoading)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceSecondary,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Checking network connection...',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
+            // Scrollable Content
+            Flexible(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Vibrant Reward Highlight Banner
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: AppShadows.soft,
                       ),
-                    ],
-                  ),
-                )
-              else if (_isDuplicateIp)
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.5)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                      child: Row(
                         children: [
-                          const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 20),
-                          const SizedBox(width: 8),
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.account_balance_wallet_rounded,
+                              color: Color(0xFF10B981),
+                              size: 26,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
                           Expanded(
-                            child: Text(
-                              'Duplicate Network Detected ($_clientIp)',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF92400E),
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'TASK REWARD',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                    color: const Color(0xFF10B981),
+                                  ),
+                                ),
+                                Text(
+                                  'Earn $payoutStr',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  'Credited directly to your wallet on task completion',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'This IP address was already used for this task. To prevent conversion rejection by the advertiser, please turn off Wi-Fi and use Mobile Data (or toggle Airplane mode) before starting.',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: const Color(0xFF78350F),
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: _checkNetworkAndFetchLink,
-                            icon: const Icon(Icons.sync_rounded, size: 14, color: Color(0xFF92400E)),
-                            label: Text(
-                              'Re-check IP',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF92400E),
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFFD97706)),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          TextButton(
-                            onPressed: () => _launchTask(force: true),
-                            child: Text(
-                              'Open Anyway',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFFB45309),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFECFDF5),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.verified_user_rounded, color: Color(0xFF059669), size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Clean Network Verified ($_clientIp) • Ready to track',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF065F46),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 16),
-            ],
+                    ),
 
-            if (_error != null) ...[
-              Container(
-                padding: const EdgeInsets.all(10),
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.dangerBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  _error!,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppColors.danger),
+                    const SizedBox(height: 16),
+
+                    // How it works steps
+                    Text(
+                      'How to Complete',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildStepRow(
+                      number: '1',
+                      title: 'Open Partner Link',
+                      subtitle: 'Tap the button below to launch the official campaign task.',
+                    ),
+                    _buildStepRow(
+                      number: '2',
+                      title: 'Complete Target Event',
+                      subtitle: widget.campaign.terms != null && widget.campaign.terms!.isNotEmpty
+                          ? widget.campaign.terms!
+                          : 'Follow instructions and complete the required action.',
+                    ),
+                    _buildStepRow(
+                      number: '3',
+                      title: 'Receive Reward',
+                      subtitle: '$payoutStr automatically credited to your wallet once confirmed.',
+                      isLast: true,
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Anti-Fraud & Duplicate IP Status Card
+                    if (widget.campaign.checkDuplicateIp) ...[
+                      if (_isLoading)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceSecondary,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Checking network connection...',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (_isDuplicateIp)
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.5)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 20),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Duplicate Network Detected ($_clientIp)',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF92400E),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'This IP address was already used for this task. To prevent conversion rejection by the advertiser, please turn off Wi-Fi and use Mobile Data (or toggle Airplane mode) before starting.',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: const Color(0xFF78350F),
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: _checkNetworkAndFetchLink,
+                                    icon: const Icon(Icons.sync_rounded, size: 14, color: Color(0xFF92400E)),
+                                    label: Text(
+                                      'Re-check IP',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF92400E),
+                                      ),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: Color(0xFFD97706)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  TextButton(
+                                    onPressed: () => _launchTask(force: true),
+                                    child: Text(
+                                      'Open Anyway',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFFB45309),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFECFDF5),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.verified_user_rounded, color: Color(0xFF059669), size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Clean Network Verified ($_clientIp) • Ready to track',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF065F46),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 10),
+                    ],
+
+                    if (_error != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.dangerBg,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          _error!,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppColors.danger),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            ],
+            ),
 
-            // Main Action Button
+            const SizedBox(height: 12),
+
+            // Pinned Main Action Button at Bottom
             SizedBox(
               width: double.infinity,
               height: 52,
