@@ -196,28 +196,42 @@ Route::get('/system/debug-status/{token}', function ($token, \Illuminate\Http\Re
         abort(403, 'Unauthorized');
     }
 
-    $logFile = storage_path('logs/laravel.log');
-    $lastLog = '';
-    if (file_exists($logFile)) {
-        $lines = file($logFile);
-        $lastLog = implode('', array_slice($lines, -60));
+    try {
+        $logFile = storage_path('logs/laravel.log');
+        $lastLog = '';
+        if (file_exists($logFile)) {
+            $lines = file($logFile);
+            $lastLog = implode('', array_slice($lines, -50));
+        }
+
+        $tgApi = 'untested';
+        try {
+            $res = \Illuminate\Support\Facades\Http::timeout(3)->get('https://api.telegram.org');
+            $tgApi = 'HTTP ' . $res->status();
+        } catch (\Throwable $e) {
+            $tgApi = 'Error: ' . $e->getMessage();
+        }
+
+        $tgWeb = 'untested';
+        try {
+            $res = \Illuminate\Support\Facades\Http::timeout(3)->get('https://t.me/s/lootdeals');
+            $tgWeb = 'HTTP ' . $res->status();
+        } catch (\Throwable $e) {
+            $tgWeb = 'Error: ' . $e->getMessage();
+        }
+
+        return response()->json([
+            'tg_api_reachability' => $tgApi,
+            'tg_web_reachability' => $tgWeb,
+            'deals_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deals'),
+            'deal_sync_logs_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deal_sync_logs'),
+            'campaign_count' => \App\Models\Campaign::count(),
+            'user_count' => \App\Models\User::count(),
+            'latest_log' => $lastLog,
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
     }
-
-    $gitHead = shell_exec('git log -1 --oneline 2>&1') ?? 'N/A';
-
-    $tgApiProbe = shell_exec('curl -s -m 4 -I https://api.telegram.org 2>&1') ?? 'null';
-    $tgWebProbe = shell_exec('curl -s -m 4 -I https://t.me/s/lootdeals 2>&1') ?? 'null';
-
-    return response()->json([
-        'git_head' => trim($gitHead),
-        'tg_api_probe' => trim($tgApiProbe),
-        'tg_web_probe' => trim($tgWebProbe),
-        'deals_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deals'),
-        'deal_sync_logs_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deal_sync_logs'),
-        'campaign_count' => \App\Models\Campaign::count(),
-        'user_count' => \App\Models\User::count(),
-        'latest_log' => $lastLog,
-    ]);
 });
 
 // 4. USER / AFFILIATE AUTHENTICATION & DASHBOARD REALM
