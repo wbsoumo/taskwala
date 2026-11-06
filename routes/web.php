@@ -144,6 +144,18 @@ Route::get('/system/run-migrations/{token}', function ($token) {
     }
 });
 
+Route::get('/system/debug-status/{token}', function ($token) {
+    if ($token !== 'taskwala_migrate_sec_9981') {
+        abort(403, 'Unauthorized');
+    }
+    return response()->json([
+        'campaign_count' => \App\Models\Campaign::count(),
+        'active_campaigns_count' => \App\Models\Campaign::where('status', 'active')->count(),
+        'campaigns' => \App\Models\Campaign::all(['id', 'name', 'status', 'category']),
+        'user_count' => \App\Models\User::count(),
+    ]);
+});
+
 // 4. USER / AFFILIATE AUTHENTICATION & DASHBOARD REALM
 Route::middleware(['web'])->group(function () {
     Route::get('/login', [UserLoginController::class, 'showLoginForm'])->name('user.login');
