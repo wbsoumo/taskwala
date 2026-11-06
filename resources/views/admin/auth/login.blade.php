@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,14 +14,51 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
 
+    <!-- Theme initialization before render -->
+    <script>
+        (function() {
+            var savedTheme = localStorage.getItem('taskwala_auth_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
     <style>
         :root {
             --admin-primary: #3b82f6;
             --admin-indigo: #6366f1;
             --bg-cyber: #050811;
+            --text-cyber: #f8fafc;
+            --text-muted: #94a3b8;
             --card-cyber: rgba(15, 23, 42, 0.88);
             --border-cyber: rgba(59, 130, 246, 0.2);
             --input-cyber: rgba(7, 11, 20, 0.85);
+            --input-border: rgba(255, 255, 255, 0.08);
+            --input-text: #ffffff;
+            --card-shadow: 0 25px 55px -10px rgba(0, 0, 0, 0.7), 0 0 45px rgba(59, 130, 246, 0.15);
+            --theme-btn-bg: rgba(15, 23, 42, 0.85);
+            --theme-btn-border: rgba(59, 130, 246, 0.25);
+            --theme-btn-text: #e2e8f0;
+            --theme-btn-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+            --grid-line: rgba(255, 255, 255, 0.02);
+            --caps-warn-color: #f59e0b;
+        }
+
+        [data-theme="light"] {
+            --bg-cyber: #f8fafc;
+            --text-cyber: #0f172a;
+            --text-muted: #64748b;
+            --card-cyber: rgba(255, 255, 255, 0.95);
+            --border-cyber: rgba(59, 130, 246, 0.25);
+            --input-cyber: #f8fafc;
+            --input-border: #cbd5e1;
+            --input-text: #0f172a;
+            --card-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.12), 0 0 35px rgba(59, 130, 246, 0.1);
+            --theme-btn-bg: rgba(255, 255, 255, 0.95);
+            --theme-btn-border: rgba(203, 213, 225, 0.9);
+            --theme-btn-text: #0f172a;
+            --theme-btn-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+            --grid-line: rgba(59, 130, 246, 0.04);
+            --caps-warn-color: #d97706;
         }
 
         body {
@@ -30,7 +67,7 @@
                 radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.18) 0%, transparent 45%),
                 radial-gradient(circle at 85% 85%, rgba(99, 102, 241, 0.16) 0%, transparent 45%),
                 var(--bg-cyber);
-            color: #f8fafc;
+            color: var(--text-cyber);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -38,6 +75,7 @@
             padding: 30px 15px;
             position: relative;
             overflow-x: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         /* Subtle cyber grid background */
@@ -45,11 +83,55 @@
             content: '';
             position: absolute;
             inset: 0;
-            background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-image: linear-gradient(var(--grid-line) 1px, transparent 1px),
+                              linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
             background-size: 32px 32px;
             pointer-events: none;
             z-index: 0;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle-btn {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 100;
+            background: var(--theme-btn-bg);
+            border: 1.5px solid var(--theme-btn-border);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: var(--theme-btn-text);
+            border-radius: 9999px;
+            padding: 8px 18px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: var(--theme-btn-shadow);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+        .theme-toggle-btn:hover {
+            transform: translateY(-2px);
+            border-color: var(--admin-primary);
+            color: var(--admin-primary);
+        }
+        .theme-toggle-btn i {
+            font-size: 0.95rem;
+            transition: transform 0.3s ease;
+        }
+        .theme-toggle-btn:hover i {
+            transform: rotate(25deg);
+        }
+        @media (max-width: 576px) {
+            .theme-toggle-btn {
+                top: 14px;
+                right: 14px;
+                padding: 6px 14px;
+                font-size: 0.8rem;
+            }
         }
 
         .auth-container {
@@ -65,9 +147,10 @@
             -webkit-backdrop-filter: blur(24px);
             border: 1px solid var(--border-cyber);
             border-radius: 28px;
-            box-shadow: 0 25px 55px -10px rgba(0, 0, 0, 0.7), 0 0 45px rgba(59, 130, 246, 0.15);
+            box-shadow: var(--card-shadow);
             position: relative;
             overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease, border-color 0.3s ease;
         }
 
         /* Top glowing line */
@@ -112,7 +195,7 @@
         .security-pill {
             background: rgba(59, 130, 246, 0.1);
             border: 1px solid rgba(59, 130, 246, 0.25);
-            color: #93c5fd;
+            color: #3b82f6;
             font-size: 0.72rem;
             font-weight: 700;
             padding: 4px 12px;
@@ -126,22 +209,22 @@
 
         .form-control-admin {
             background: var(--input-cyber);
-            border: 1.5px solid rgba(255, 255, 255, 0.08);
+            border: 1.5px solid var(--input-border);
             border-radius: 14px;
-            color: #ffffff !important;
+            color: var(--input-text) !important;
             padding: 13px 16px;
             font-size: 0.95rem;
             height: 50px;
             transition: all 0.2s ease;
         }
         .form-control-admin:focus {
-            background: rgba(15, 23, 42, 0.95);
+            background: var(--card-cyber);
             border-color: #3b82f6;
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
             outline: none;
         }
         .form-control-admin::placeholder {
-            color: #475569;
+            color: #94a3b8;
         }
 
         .addon-icon {
@@ -149,14 +232,14 @@
             right: 14px;
             top: 50%;
             transform: translateY(-50%);
-            color: #64748b;
+            color: var(--text-muted);
             cursor: pointer;
             z-index: 5;
             transition: color 0.2s ease;
             padding: 4px;
         }
         .addon-icon:hover {
-            color: #93c5fd;
+            color: #3b82f6;
         }
 
         .btn-admin-submit {
@@ -191,7 +274,7 @@
 
         .caps-alert {
             display: none;
-            color: #f59e0b;
+            color: var(--caps-warn-color);
             font-size: 0.75rem;
             font-weight: 600;
             margin-top: 6px;
@@ -200,7 +283,7 @@
         .alert-admin-danger {
             background: rgba(239, 68, 68, 0.12);
             border: 1px solid rgba(239, 68, 68, 0.3);
-            color: #fca5a5;
+            color: #ef4444;
             border-radius: 14px;
             font-size: 0.85rem;
             font-weight: 600;
@@ -212,7 +295,7 @@
         }
 
         .custom-control-label {
-            color: #94a3b8;
+            color: var(--text-muted);
             font-size: 0.85rem;
             cursor: pointer;
             user-select: none;
@@ -233,6 +316,12 @@
     </style>
 </head>
 <body>
+
+<!-- Light / Dark Mode Toggle Button -->
+<button type="button" class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle theme">
+    <i class="fas fa-sun" id="themeToggleIcon"></i>
+    <span id="themeToggleText">Light Mode</span>
+</button>
 
 <div class="auth-container">
     <div class="card card-admin p-4 p-md-5 {{ $errors->any() ? 'shake-box' : '' }}">
@@ -323,7 +412,7 @@
         </form>
 
         <!-- Security Notice Footer -->
-        <div class="text-center mt-4 pt-3" style="border-top: 1px solid rgba(255, 255, 255, 0.08);">
+        <div class="text-center mt-4 pt-3" style="border-top: 1px solid var(--border-cyber);">
             <p class="text-muted mb-0" style="font-size: 0.75rem;">
                 <i class="fas fa-shield-alt text-primary mr-1"></i> Unauthorized access attempts are monitored and logged.
             </p>
@@ -332,6 +421,30 @@
 </div>
 
 <script>
+    // Theme Toggle Functionality
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('taskwala_auth_theme', newTheme);
+        updateThemeUI(newTheme);
+    }
+
+    function updateThemeUI(theme) {
+        const icon = document.getElementById('themeToggleIcon');
+        const text = document.getElementById('themeToggleText');
+        if (theme === 'light') {
+            icon.className = 'fas fa-moon';
+            text.innerText = 'Dark Mode';
+        } else {
+            icon.className = 'fas fa-sun';
+            text.innerText = 'Light Mode';
+        }
+    }
+
+    // Initialize Theme UI based on current active theme
+    updateThemeUI(document.documentElement.getAttribute('data-theme') || 'dark');
+
     // Password Visibility Toggle
     const toggleAdminPasswordBtn = document.getElementById('toggleAdminPasswordBtn');
     const adminPasswordInput = document.getElementById('adminPasswordInput');
