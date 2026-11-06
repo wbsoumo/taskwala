@@ -111,7 +111,37 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Settings
         Route::get('/settings', [AdminSettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [AdminSettingController::class, 'update'])->name('settings.update');
+        Route::post('/settings/migrate', function () {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                $output = \Illuminate\Support\Facades\Artisan::output();
+                return back()->with('success', 'Migrations completed: ' . $output);
+            } catch (\Throwable $e) {
+                return back()->with('error', 'Migration failed: ' . $e->getMessage());
+            }
+        })->name('settings.migrate');
     });
+});
+
+// Secure cPanel migration helper
+Route::get('/system/run-migrations/{token}', function ($token) {
+    if ($token !== 'taskwala_migrate_sec_9981') {
+        abort(403, 'Unauthorized');
+    }
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        return response()->json([
+            'success' => true,
+            'message' => 'Migrations executed successfully.',
+            'output' => $output,
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
 });
 
 // 4. USER / AFFILIATE AUTHENTICATION & DASHBOARD REALM

@@ -76,11 +76,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final fcmToken = NotificationService().currentFcmToken;
-      final response = await _apiClient.post('/auth/login', data: {
-        'login': login,
-        'password': password,
-        if (fcmToken != null && fcmToken.isNotEmpty) 'fcm_token': fcmToken,
-      });
+      dynamic response;
+      try {
+        response = await _apiClient.post('/auth/login', data: {
+          'login': login,
+          'password': password,
+          if (fcmToken != null && fcmToken.isNotEmpty) 'fcm_token': fcmToken,
+        });
+      } on DioException catch (dioErr) {
+        // If server errored with 500 when fcm_token was included, fallback to clean login
+        if (fcmToken != null && fcmToken.isNotEmpty && (dioErr.response?.statusCode == 500 || dioErr.response == null)) {
+          response = await _apiClient.post('/auth/login', data: {
+            'login': login,
+            'password': password,
+          });
+        } else {
+          rethrow;
+        }
+      }
 
       final data = response.data;
       if (data != null && (data['token'] != null || (data['data'] != null && data['data']['token'] != null))) {

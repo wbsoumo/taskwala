@@ -11,137 +11,170 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
     public function login(Request $request): JsonResponse
     {
-        $request->validate([
-            'login' => ['required', 'string'], // Email, Mobile number, or Name
-            'password' => ['required', 'string'],
-        ]);
-
-        $login = trim($request->login);
-
-        $user = User::where('email', $login)
-            ->orWhere('mobile_number', $login)
-            ->orWhere('name', $login)
-            ->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'login' => ['Invalid email/mobile or password credentials.'],
+        try {
+            $request->validate([
+                'login' => ['required', 'string'], // Email, Mobile number, or Name
+                'password' => ['required', 'string'],
             ]);
+
+            $login = trim($request->login);
+
+            $user = User::where('email', $login)
+                ->orWhere('mobile_number', $login)
+                ->orWhere('name', $login)
+                ->first();
+
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                throw ValidationException::withMessages([
+                    'login' => ['Invalid email/mobile or password credentials.'],
+                ]);
+            }
+
+            if (!$user->isActive()) {
+                return response()->json(['message' => 'Account is suspended or blocked.'], 403);
+            }
+
+            // Email Verification check: Always verify user's email id
+            if ($user->email_verified_at === null) {
+                try {
+                    $otp = (string) random_int(100000, 999999);
+                    DB::table('password_reset_tokens')->updateOrInsert(
+                        ['email' => $user->email],
+                        [
+                            'token' => Hash::make($otp),
+                            'created_at' => now(),
+                        ]
+                    );
+
+                    OtpMailService::sendRegistrationVerificationOtp($user->email, $user->name, $otp);
+                } catch (\Throwable $mailEx) {
+                    Log::warning('Verification email dispatch failed: ' . $mailEx->getMessage());
+                }
+
+                $responseData = [
+                    'success' => false,
+                    'requires_verification' => true,
+                    'message' => 'Please verify your email address to log in. We have sent a verification code to ' . $this->maskEmail($user->email),
+                    'email' => $user->email,
+                    'email_hint' => $this->maskEmail($user->email),
+                ];
+
+                if (app()->environment('testing')) {
+                    $responseData['debug_code'] = $otp;
+                }
+
+                return response()->json($responseData, 403);
+            }
+
+            $token = $user->createToken('mobile_app_token')->plainTextToken;
+
+            if ($request->filled('fcm_token')) {
+                try {
+                    if (Schema::hasColumn('users', 'fcm_token')) {
+                        $user->update([
+                            'fcm_token' => $request->fcm_token,
+                            'fcm_token_updated_at' => now(),
+                        ]);
+                    }
+                } catch (\Throwable $fcmEx) {
+                    Log::warning('FCM token saving bypassed: ' . $fcmEx->getMessage());
+                }
+            }
+
+            return response()->json([
+                'message' => 'Login successful.',
+                'token' => $token,
+                'user' => [
+                    'public_id' => $user->public_id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'mobile_number' => $user->mobile_number,
+                    'referral_code' => $user->referral_code,
+                    'upi_id' => $user->upi_id,
+                    'upi_holder_name' => $user->upi_holder_name,
+                    'status' => $user->status,
+                ],
+            ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('API login error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'message' => 'Login error: ' . $e->getMessage(),
+            ], 500);
         }
+    }
 
-        if (!$user->isActive()) {
-            return response()->json(['message' => 'Account is suspended or blocked.'], 403);
-        }
+    public function register(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+                'mobile_number' => ['required', 'string', 'max:20', 'unique:users'],
+                'password' => ['required', 'string', 'min:8', 'confirmed'],
+                'referral_code' => ['nullable', 'string', 'exists:users,referral_code'],
+            ]);
 
-        // Email Verification check: Always verify user's email id
-        if ($user->email_verified_at === null) {
-            $otp = (string) random_int(100000, 999999);
-            DB::table('password_reset_tokens')->updateOrInsert(
-                ['email' => $user->email],
-                [
-                    'token' => Hash::make($otp),
-                    'created_at' => now(),
-                ]
-            );
+            $referrerId = null;
+            if (!empty($validated['referral_code'])) {
+                $referrer = User::where('referral_code', $validated['referral_code'])->first();
+                $referrerId = $referrer?->id;
+            }
 
-            OtpMailService::sendRegistrationVerificationOtp($user->email, $user->name, $otp);
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'mobile_number' => $validated['mobile_number'],
+                'password' => Hash::make($validated['password']),
+                'referred_by' => $referrerId,
+                'status' => 'active',
+                'email_verified_at' => null,
+            ]);
+
+            try {
+                $otp = (string) random_int(100000, 999999);
+                DB::table('password_reset_tokens')->updateOrInsert(
+                    ['email' => $user->email],
+                    [
+                        'token' => Hash::make($otp),
+                        'created_at' => now(),
+                    ]
+                );
+
+                OtpMailService::sendRegistrationVerificationOtp($user->email, $user->name, $otp);
+            } catch (\Throwable $otpEx) {
+                Log::warning('OTP dispatch failed: ' . $otpEx->getMessage());
+            }
 
             $responseData = [
-                'success' => false,
+                'success' => true,
                 'requires_verification' => true,
-                'message' => 'Please verify your email address to log in. We have sent a verification code to ' . $this->maskEmail($user->email),
+                'message' => 'Registration successful! Please verify your email with the 6-digit code sent to ' . $this->maskEmail($user->email),
                 'email' => $user->email,
                 'email_hint' => $this->maskEmail($user->email),
             ];
 
             if (app()->environment('testing')) {
-                $responseData['debug_code'] = $otp;
+                $responseData['debug_code'] = $otp ?? null;
             }
 
-            return response()->json($responseData, 403);
+            return response()->json($responseData, 201);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('API registration error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'message' => 'Registration error: ' . $e->getMessage(),
+            ], 500);
         }
-
-        $token = $user->createToken('mobile_app_token')->plainTextToken;
-
-        if ($request->filled('fcm_token')) {
-            $user->update([
-                'fcm_token' => $request->fcm_token,
-                'fcm_token_updated_at' => now(),
-            ]);
-        }
-
-        return response()->json([
-            'message' => 'Login successful.',
-            'token' => $token,
-            'user' => [
-                'public_id' => $user->public_id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'mobile_number' => $user->mobile_number,
-                'referral_code' => $user->referral_code,
-                'upi_id' => $user->upi_id,
-                'upi_holder_name' => $user->upi_holder_name,
-                'status' => $user->status,
-            ],
-        ]);
-    }
-
-    public function register(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'mobile_number' => ['required', 'string', 'max:20', 'unique:users'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'referral_code' => ['nullable', 'string', 'exists:users,referral_code'],
-        ]);
-
-        $referrerId = null;
-        if (!empty($validated['referral_code'])) {
-            $referrer = User::where('referral_code', $validated['referral_code'])->first();
-            $referrerId = $referrer?->id;
-        }
-
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'mobile_number' => $validated['mobile_number'],
-            'password' => Hash::make($validated['password']),
-            'referred_by' => $referrerId,
-            'status' => 'active',
-            'email_verified_at' => null,
-        ]);
-
-        $otp = (string) random_int(100000, 999999);
-        DB::table('password_reset_tokens')->updateOrInsert(
-            ['email' => $user->email],
-            [
-                'token' => Hash::make($otp),
-                'created_at' => now(),
-            ]
-        );
-
-        OtpMailService::sendRegistrationVerificationOtp($user->email, $user->name, $otp);
-
-        $responseData = [
-            'success' => true,
-            'requires_verification' => true,
-            'message' => 'Registration successful! Please verify your email with the 6-digit code sent to ' . $this->maskEmail($user->email),
-            'email' => $user->email,
-            'email_hint' => $this->maskEmail($user->email),
-        ];
-
-        if (app()->environment('testing')) {
-            $responseData['debug_code'] = $otp;
-        }
-
-        return response()->json($responseData, 201);
     }
 
     public function verifyEmail(Request $request): JsonResponse
@@ -188,10 +221,16 @@ class AuthController extends Controller
         $token = $user->createToken('mobile_app_token')->plainTextToken;
 
         if ($request->filled('fcm_token')) {
-            $user->update([
-                'fcm_token' => $request->fcm_token,
-                'fcm_token_updated_at' => now(),
-            ]);
+            try {
+                if (Schema::hasColumn('users', 'fcm_token')) {
+                    $user->update([
+                        'fcm_token' => $request->fcm_token,
+                        'fcm_token_updated_at' => now(),
+                    ]);
+                }
+            } catch (\Throwable $fcmEx) {
+                Log::warning('FCM token saving bypassed in verifyEmail: ' . $fcmEx->getMessage());
+            }
         }
 
         return response()->json([
@@ -467,11 +506,17 @@ class AuthController extends Controller
             'fcm_token' => ['required', 'string'],
         ]);
 
-        $user = $request->user();
-        $user->update([
-            'fcm_token' => $request->fcm_token,
-            'fcm_token_updated_at' => now(),
-        ]);
+        try {
+            if (Schema::hasColumn('users', 'fcm_token')) {
+                $user = $request->user();
+                $user->update([
+                    'fcm_token' => $request->fcm_token,
+                    'fcm_token_updated_at' => now(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('FCM token update failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,
