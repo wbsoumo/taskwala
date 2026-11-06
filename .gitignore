@@ -26,3 +26,6 @@ Homestead.yaml
 Thumbs.db
 *.apk
 storage/app/firebase-credentials.json
+google-services*.json
+android_notification_icon.png
+

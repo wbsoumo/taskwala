@@ -58,6 +58,44 @@ class User {
       };
 }
 
+class CampaignCollateral {
+  final int id;
+  final String title;
+  final String mediaType; // 'image' or 'video'
+  final String mediaUrl;
+  final String? thumbnailUrl;
+  final String? defaultCaption;
+
+  CampaignCollateral({
+    required this.id,
+    required this.title,
+    required this.mediaType,
+    required this.mediaUrl,
+    this.thumbnailUrl,
+    this.defaultCaption,
+  });
+
+  factory CampaignCollateral.fromJson(Map<String, dynamic> json) {
+    return CampaignCollateral(
+      id: _parseInt(json['id']),
+      title: json['title']?.toString() ?? 'Marketing Asset',
+      mediaType: json['media_type']?.toString() ?? 'image',
+      mediaUrl: json['media_url']?.toString() ?? '',
+      thumbnailUrl: json['thumbnail_url']?.toString(),
+      defaultCaption: json['default_caption']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'media_type': mediaType,
+        'media_url': mediaUrl,
+        'thumbnail_url': thumbnailUrl,
+        'default_caption': defaultCaption,
+      };
+}
+
 class Campaign {
   final int id;
   final String publicId;
@@ -72,6 +110,7 @@ class Campaign {
   final String? terms;
   final String? eligibility;
   final bool checkDuplicateIp;
+  final List<CampaignCollateral> collaterals;
 
   Campaign({
     required this.id,
@@ -87,12 +126,20 @@ class Campaign {
     this.terms,
     this.eligibility,
     this.checkDuplicateIp = false,
+    this.collaterals = const [],
   });
 
   factory Campaign.fromJson(Map<String, dynamic> json) {
     final parsedId = _parseInt(json['id']);
     final pubId = json['public_id']?.toString() ?? (parsedId != 0 ? parsedId.toString() : '');
     final fallbackId = parsedId != 0 ? parsedId : pubId.hashCode.abs();
+
+    final rawCollaterals = json['collaterals'];
+    final List<CampaignCollateral> collateralList = (rawCollaterals is List)
+        ? rawCollaterals
+            .map((c) => CampaignCollateral.fromJson(Map<String, dynamic>.from(c as Map)))
+            .toList()
+        : const [];
 
     return Campaign(
       id: fallbackId,
@@ -108,6 +155,7 @@ class Campaign {
       terms: json['terms']?.toString(),
       eligibility: json['eligibility']?.toString(),
       checkDuplicateIp: json['check_duplicate_ip'] == true || json['check_duplicate_ip'] == 1,
+      collaterals: collateralList,
     );
   }
 }
@@ -448,3 +496,63 @@ class TeamMember {
     );
   }
 }
+
+class MissingConversionTicket {
+  final int id;
+  final String publicId;
+  final int campaignId;
+  final String campaignName;
+  final String? campaignLogo;
+  final String category;
+  final String? clickId;
+  final String? orderReferenceId;
+  final String taskDate;
+  final String screenshotUrl;
+  final String? notes;
+  final String status;
+  final String? adminNotes;
+  final double approvedPayout;
+  final String createdAt;
+  final String? resolvedAt;
+
+  MissingConversionTicket({
+    required this.id,
+    required this.publicId,
+    required this.campaignId,
+    required this.campaignName,
+    this.campaignLogo,
+    this.category = 'General',
+    this.clickId,
+    this.orderReferenceId,
+    required this.taskDate,
+    required this.screenshotUrl,
+    this.notes,
+    required this.status,
+    this.adminNotes,
+    this.approvedPayout = 0.0,
+    required this.createdAt,
+    this.resolvedAt,
+  });
+
+  factory MissingConversionTicket.fromJson(Map<String, dynamic> json) {
+    return MissingConversionTicket(
+      id: _parseInt(json['id']),
+      publicId: json['public_id']?.toString() ?? '',
+      campaignId: _parseInt(json['campaign_id'] ?? json['campaign']?['id']),
+      campaignName: json['campaign_name']?.toString() ?? json['campaign']?['name']?.toString() ?? 'Campaign',
+      campaignLogo: (json['campaign_logo'] ?? json['campaign']?['logo'] ?? json['campaign']?['logo_url'])?.toString(),
+      category: json['category']?.toString() ?? json['campaign']?['category']?.toString() ?? 'General',
+      clickId: json['click_id']?.toString(),
+      orderReferenceId: json['order_reference_id']?.toString(),
+      taskDate: json['task_date']?.toString() ?? '',
+      screenshotUrl: json['screenshot_url']?.toString() ?? '',
+      notes: json['notes']?.toString(),
+      status: json['status']?.toString() ?? 'pending',
+      adminNotes: json['admin_notes']?.toString(),
+      approvedPayout: _parseDouble(json['approved_payout']),
+      createdAt: json['created_at']?.toString() ?? '',
+      resolvedAt: json['resolved_at']?.toString(),
+    );
+  }
+}
+

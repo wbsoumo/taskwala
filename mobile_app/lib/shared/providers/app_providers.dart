@@ -203,3 +203,26 @@ final teamMembersProvider = FutureProvider<List<TeamMember>>((ref) async {
   }
   return [];
 });
+
+final missingTicketsProvider = FutureProvider<List<MissingConversionTicket>>((ref) async {
+  final api = ref.watch(apiClientProvider);
+  try {
+    final response = await api.get('/tickets');
+    final data = response.data;
+    final rawList = (data is Map && data['data'] != null)
+        ? data['data']
+        : (data is Map && data['tickets'] != null)
+            ? data['tickets']
+            : (data is List ? data : []);
+    if (rawList is List) {
+      return rawList
+          .whereType<Map>()
+          .map((t) => MissingConversionTicket.fromJson(Map<String, dynamic>.from(t)))
+          .toList();
+    }
+  } catch (e) {
+    debugPrint('Error fetching missing tickets: $e');
+  }
+  return [];
+});
+

@@ -61,6 +61,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Campaigns Management
         Route::resource('campaigns', AdminCampaignController::class);
         Route::post('campaigns/{campaign}/allocations', [CampaignAllocationController::class, 'update'])->name('campaigns.allocations.store');
+        Route::post('campaigns/{campaign}/collaterals', [AdminCampaignController::class, 'uploadCollateral'])->name('campaigns.collaterals.upload');
+        Route::delete('campaigns/collaterals/{id}', [AdminCampaignController::class, 'deleteCollateral'])->name('campaigns.collaterals.delete');
+
+        // Missing Conversion Tickets
+        Route::get('/tickets', [\App\Http\Controllers\Admin\MissingTicketController::class, 'index'])->name('tickets.index');
+        Route::get('/tickets/{id}', [\App\Http\Controllers\Admin\MissingTicketController::class, 'show'])->name('tickets.show');
+        Route::post('/tickets/{id}/status', [\App\Http\Controllers\Admin\MissingTicketController::class, 'updateStatus'])->name('tickets.update_status');
 
         // Tracking & Conversions
         Route::get('/tracking/links', [AdminTrackingController::class, 'links'])->name('tracking.links');

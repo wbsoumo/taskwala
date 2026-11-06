@@ -148,4 +148,95 @@
     </div>
 </div>
 
+<!-- Marketing Collaterals & WhatsApp Posters Card -->
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card card-outline card-info shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title font-weight-bold">
+                    <i class="fas fa-photo-video text-info mr-2"></i>Marketing Collaterals & Promotional Media (Images & Videos)
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Upload Collateral Form -->
+                    <div class="col-md-4 col-12 border-right">
+                        <h5 class="font-weight-bold mb-3"><i class="fas fa-cloud-upload-alt mr-1"></i> Upload New Collateral</h5>
+                        <form method="POST" action="{{ route('admin.campaigns.collaterals.upload', $campaign) }}" enctype="multipart/form-data">
+                            @csrf
+                            <div class="form-group mb-2">
+                                <label class="font-weight-bold small">Collateral Title / Theme</label>
+                                <input type="text" name="title" class="form-control form-control-sm" placeholder="e.g. High Conversion Story Banner" required>
+                            </div>
+                            <div class="form-group mb-2">
+                                <label class="font-weight-bold small">Media Type</label>
+                                <select name="media_type" class="form-control form-control-sm" required>
+                                    <option value="image">Poster / Banner Image (PNG, JPG, WEBP)</option>
+                                    <option value="video">Promo Video (MP4)</option>
+                                </select>
+                            </div>
+                            <div class="form-group mb-2">
+                                <label class="font-weight-bold small">Media File (Max 50MB)</label>
+                                <input type="file" name="media_file" class="form-control-file" required>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label class="font-weight-bold small">Pre-Written WhatsApp Copy / Caption</label>
+                                <textarea name="default_caption" class="form-control form-control-sm" rows="3" placeholder="e.g. 🔥 Exclusive offer! Get instant cashback when you sign up here:"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-info btn-block btn-sm font-weight-bold shadow-sm">
+                                <i class="fas fa-upload mr-1"></i> Upload Collateral
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Collaterals List -->
+                    <div class="col-md-8 col-12">
+                        <h5 class="font-weight-bold mb-3"><i class="fas fa-layer-group mr-1"></i> Active Collaterals ({{ $campaign->collaterals->count() }})</h5>
+                        <div class="row">
+                            @forelse($campaign->collaterals as $col)
+                                <div class="col-md-4 col-sm-6 col-12 mb-3">
+                                    <div class="card h-100 shadow-sm border">
+                                        @if($col->media_type === 'video')
+                                            <div class="bg-dark text-white text-center py-4 rounded-top">
+                                                <i class="fas fa-play-circle fa-3x text-info"></i>
+                                                <div class="small mt-1">Video Promo</div>
+                                            </div>
+                                        @else
+                                            <img src="{{ $col->media_url }}" class="card-img-top" style="height: 120px; object-fit: cover;" alt="{{ $col->title }}">
+                                        @endif
+                                        <div class="card-body p-2">
+                                            <span class="badge badge-{{ $col->media_type === 'video' ? 'danger' : 'primary' }} text-uppercase">{{ $col->media_type }}</span>
+                                            <div class="font-weight-bold small mt-1 text-truncate">{{ $col->title }}</div>
+                                            @if($col->default_caption)
+                                                <small class="text-muted d-block text-truncate mt-1">{{ $col->default_caption }}</small>
+                                            @endif
+                                        </div>
+                                        <div class="card-footer p-2 bg-light d-flex justify-content-between align-items-center">
+                                            <a href="{{ $col->media_url }}" target="_blank" class="btn btn-xs btn-outline-primary">
+                                                <i class="fas fa-external-link-alt mr-1"></i>View
+                                            </a>
+                                            <form method="POST" action="{{ route('admin.campaigns.collaterals.delete', $col->id) }}" onsubmit="return confirm('Delete this collateral?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-xs btn-outline-danger">
+                                                    <i class="fas fa-trash-alt mr-1"></i>Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="col-12 py-4 text-center text-muted">
+                                    <i class="fas fa-photo-video fa-2x mb-2 d-block text-secondary"></i>
+                                    No marketing collaterals uploaded yet. Upload posters or short promo videos above to let affiliates share rich media with pre-written text on WhatsApp!
+                                </div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection

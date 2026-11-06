@@ -21,6 +21,7 @@ import '../../features/referrals/presentation/referral_dashboard_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/support/presentation/support_screen.dart';
+import '../../features/reports/presentation/missing_ticket_screen.dart';
 
 /// Helper for silky smooth slide & fade page transitions
 CustomTransitionPage<T> _buildSmoothPage<T>({
@@ -245,6 +246,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           child: const SupportScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/tickets',
+        pageBuilder: (context, state) {
+          final campaignIdStr = state.uri.queryParameters['campaign_id'];
+          final initialCampaignId = campaignIdStr != null ? int.tryParse(campaignIdStr) : null;
+          return _buildSmoothPage(
+            context: context,
+            state: state,
+            child: MissingTicketScreen(initialCampaignId: initialCampaignId),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/missing-tickets',
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const MissingTicketScreen(),
         ),
       ),
     ],

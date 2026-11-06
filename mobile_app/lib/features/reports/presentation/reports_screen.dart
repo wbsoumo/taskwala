@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../shared/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
@@ -124,6 +125,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         ),
         actions: [
           IconButton(
+            tooltip: 'Claim Missing Lead',
+            icon: const Icon(Icons.assignment_late_outlined, size: 21, color: AppColors.primary),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              context.push('/tickets');
+            },
+          ),
+          IconButton(
             tooltip: 'Refresh Reports',
             icon: const Icon(Icons.refresh_rounded, size: 21, color: AppColors.textPrimary),
             onPressed: () {
@@ -169,6 +178,64 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+
+          // MISSING CONVERSION CLAIM BANNER
+          Container(
+            color: AppColors.surface,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: InkWell(
+              onTap: () => context.push('/tickets'),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFEFF6FF), Color(0xFFDBEAFE)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF2563EB),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 14),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Missing a lead or payout?',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF1E3A8A),
+                            ),
+                          ),
+                          Text(
+                            'Tap here to submit Order ID proof & claim wallet credit',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10.5,
+                              color: const Color(0xFF1E40AF),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF2563EB), size: 13),
+                  ],
+                ),
               ),
             ),
           ),

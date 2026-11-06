@@ -46,5 +46,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAsRead']);
         Route::post('/notifications/{id}/unread', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAsUnread']);
         Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAllAsRead']);
+
+        Route::get('/tickets', [\App\Http\Controllers\Api\V1\MissingTicketController::class, 'index']);
+        Route::post('/tickets', [\App\Http\Controllers\Api\V1\MissingTicketController::class, 'store']);
     });
 });

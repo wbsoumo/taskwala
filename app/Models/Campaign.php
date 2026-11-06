@@ -112,6 +112,11 @@ class Campaign extends Model
         return $this->hasMany(AffiliateLink::class);
     }
 
+    public function collaterals()
+    {
+        return $this->hasMany(CampaignCollateral::class)->where('is_active', true)->orderBy('sort_order');
+    }
+
     public function clicks()
     {
         return $this->hasMany(Click::class);

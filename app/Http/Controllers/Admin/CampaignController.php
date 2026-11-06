@@ -92,6 +92,21 @@ class CampaignController extends Controller
 
         $campaign = $this->campaignService->createCampaign($validated, auth('admin')->id());
 
+        // Broadcast Push Notification if active
+        if ($campaign->status === 'active') {
+            try {
+                app(\App\Services\NotificationDispatcherService::class)->broadcast(
+                    title: "🔥 New Offer: {$campaign->name}",
+                    body: "Earn up to ₹" . number_format($campaign->default_affiliate_payout, 0) . " per task. Check it out now!",
+                    deeplink: "/campaigns",
+                    imageUrl: $campaign->logo,
+                    adminId: auth('admin')->id()
+                );
+            } catch (\Throwable $ne) {
+                \Illuminate\Support\Facades\Log::warning("Campaign broadcast push failed: " . $ne->getMessage());
+            }
+        }
+
         return redirect()->route('admin.campaigns.show', $campaign)->with('success', 'Campaign created successfully.');
     }
 
@@ -152,8 +167,58 @@ class CampaignController extends Controller
 
         unset($validated['logo_file']);
 
+        $previousStatus = $campaign->status;
         $this->campaignService->updateCampaign($campaign, $validated, auth('admin')->id());
 
+        // Broadcast if newly activated
+        if ($previousStatus !== 'active' && $campaign->status === 'active') {
+            try {
+                app(\App\Services\NotificationDispatcherService::class)->broadcast(
+                    title: "🚀 Now Live: {$campaign->name}",
+                    body: "Earn up to ₹" . number_format($campaign->default_affiliate_payout, 0) . " per completed task. Start sharing today!",
+                    deeplink: "/campaigns",
+                    imageUrl: $campaign->logo,
+                    adminId: auth('admin')->id()
+                );
+            } catch (\Throwable $ne) {
+                \Illuminate\Support\Facades\Log::warning("Campaign activation broadcast push failed: " . $ne->getMessage());
+            }
+        }
+
         return redirect()->route('admin.campaigns.show', $campaign)->with('success', 'Campaign updated successfully.');
+    }
+
+    public function uploadCollateral(Request $request, Campaign $campaign)
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'media_type' => ['required', 'in:image,video'],
+            'media_file' => ['required', 'file', 'mimes:png,jpg,jpeg,webp,mp4,mov,avi', 'max:51200'],
+            'default_caption' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $filePath = $request->file('media_file')->store('collaterals', 'public');
+
+        $campaign->collaterals()->create([
+            'title' => $validated['title'],
+            'media_type' => $validated['media_type'],
+            'file_path' => Storage::url($filePath),
+            'default_caption' => $validated['default_caption'] ?? null,
+            'sort_order' => $campaign->collaterals()->count(),
+            'is_active' => true,
+        ]);
+
+        return redirect()->route('admin.campaigns.show', $campaign)
+            ->with('success', 'Marketing collateral uploaded successfully.');
+    }
+
+    public function deleteCollateral(int $id)
+    {
+        $collateral = \App\Models\CampaignCollateral::findOrFail($id);
+        $campaignId = $collateral->campaign_id;
+        $collateral->delete();
+
+        return redirect()->route('admin.campaigns.show', $campaignId)
+            ->with('success', 'Collateral deleted successfully.');
     }
 }

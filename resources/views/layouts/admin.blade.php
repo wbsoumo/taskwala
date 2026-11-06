@@ -135,6 +135,12 @@
                             <p>Conversions</p>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="{{ route('admin.tickets.index') }}" class="nav-link {{ request()->routeIs('admin.tickets*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-ticket-alt text-warning"></i>
+                            <p>Missing Lead Tickets</p>
+                        </a>
+                    </li>
 
                     <li class="nav-header">POSTBACKS & INTEGRATION</li>
 

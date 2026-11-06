@@ -255,6 +255,18 @@ class FinanceController extends Controller
                     actorId: $admin?->id
                 );
 
+                // Push Notification: Payout Approved
+                try {
+                    app(\App\Services\NotificationDispatcherService::class)->sendToUser(
+                        user: $payoutRequest->user,
+                        title: "⚡ Withdrawal Successful!",
+                        body: "₹" . number_format($payoutRequest->amount, 0) . " has been transferred to your UPI ({$payoutRequest->upi_id}). Txn: {$payoutRequest->transaction_id}",
+                        deeplink: "/wallet"
+                    );
+                } catch (\Throwable $ne) {
+                    \Illuminate\Support\Facades\Log::warning("Payout push failed: " . $ne->getMessage());
+                }
+
                 return redirect()->back()->with('success', 'Payout request approved! Settlement recorded with Transaction ID: ' . $payoutRequest->transaction_id);
             } else {
                 // Reject payout and refund balance back to user's wallet
@@ -291,6 +303,18 @@ class FinanceController extends Controller
                     actorType: 'admin',
                     actorId: $admin?->id
                 );
+
+                // Push Notification: Payout Rejected & Refunded
+                try {
+                    app(\App\Services\NotificationDispatcherService::class)->sendToUser(
+                        user: $payoutRequest->user,
+                        title: "❌ Withdrawal Update",
+                        body: "Your payout request of ₹" . number_format($payoutRequest->amount, 0) . " was rejected and refunded to your wallet. " . ($validated['admin_notes'] ?? ''),
+                        deeplink: "/wallet"
+                    );
+                } catch (\Throwable $ne) {
+                    \Illuminate\Support\Facades\Log::warning("Payout reject push failed: " . $ne->getMessage());
+                }
 
                 return redirect()->back()->with('success', 'Payout request rejected and funds refunded to affiliate wallet.');
             }

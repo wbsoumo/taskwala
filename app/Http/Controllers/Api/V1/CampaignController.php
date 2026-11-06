@@ -21,7 +21,8 @@ class CampaignController extends Controller
     {
         $user = $request->user();
 
-        $campaigns = Campaign::where('status', 'active')
+        $campaigns = Campaign::with('collaterals')
+            ->where('status', 'active')
             ->get()
             ->map(function ($c) use ($user) {
                 return [
@@ -37,6 +38,16 @@ class CampaignController extends Controller
                     'currency' => $c->currency,
                     'terms' => $c->terms,
                     'check_duplicate_ip' => (bool) $c->check_duplicate_ip,
+                    'collaterals' => $c->collaterals->map(function ($col) {
+                        return [
+                            'id' => $col->id,
+                            'title' => $col->title,
+                            'media_type' => $col->media_type,
+                            'media_url' => $col->media_url,
+                            'thumbnail_url' => $col->thumbnail_url,
+                            'default_caption' => $col->default_caption,
+                        ];
+                    }),
                 ];
             });
 

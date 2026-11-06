@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/auth_provider.dart';
@@ -32,17 +35,33 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
   String? _error;
   bool _isCopied = false;
 
+  // Marketing Collaterals & WhatsApp Posters state
+  CampaignCollateral? _selectedCollateral;
+  File? _userUploadedMediaFile;
+  String? _userUploadedMediaType; // 'image' or 'video'
+  int _selectedTemplateIndex = 0;
+  bool _isCustomCaption = false;
+  late TextEditingController _customCaptionController;
+  bool _isSharingWithMedia = false;
+  final ImagePicker _picker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
     // Default to 50% split for high conversion
     final defaultSplit = (widget.campaign.affiliatePayout * 0.5).round();
     _customerPayoutController = TextEditingController(text: defaultSplit.toString());
+    _customCaptionController = TextEditingController();
+
+    if (widget.campaign.collaterals.isNotEmpty) {
+      _selectedCollateral = widget.campaign.collaterals.first;
+    }
   }
 
   @override
   void dispose() {
     _customerPayoutController.dispose();
+    _customCaptionController.dispose();
     super.dispose();
   }
 
@@ -186,6 +205,124 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
       Share.share(
         '🔥 Special offer for ${widget.campaign.name} on Taskwala!\nGet ₹${_customerPayout.toStringAsFixed(0)} reward!\n👉 $url',
       );
+    }
+  }
+
+  List<String> _getTemplates(String url) {
+    final reward = _customerPayout > 0 ? '₹${_customerPayout.toStringAsFixed(0)} instant cashback' : 'exclusive rewards';
+    return [
+      '🔥 Special Offer on ${widget.campaign.name}!\n🎁 Get $reward when you register today.\n👉 Tap here to claim now: $url',
+      '👋 Hey friends! Check out ${widget.campaign.name} on Taskwala.\n💰 You get $reward directly on completion!\n🚀 Start here: $url',
+      '⚡ Verified Cashback Alert!\nEarn $reward with ${widget.campaign.name}.\n100% verified task via Taskwala App:\n👉 $url',
+    ];
+  }
+
+  String _getFinalMessage(String url) {
+    if (_isCustomCaption && _customCaptionController.text.trim().isNotEmpty) {
+      return '${_customCaptionController.text.trim()}\n\n👉 $url';
+    }
+    final templates = _getTemplates(url);
+    if (_selectedTemplateIndex < templates.length) {
+      return templates[_selectedTemplateIndex];
+    }
+    return templates[0];
+  }
+
+  Future<void> _pickUserMedia(bool isVideo) async {
+    try {
+      final XFile? file = isVideo
+          ? await _picker.pickVideo(source: ImageSource.gallery)
+          : await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (file != null) {
+        setState(() {
+          _userUploadedMediaFile = File(file.path);
+          _userUploadedMediaType = isVideo ? 'video' : 'image';
+          _selectedCollateral = null; // Prioritize custom file
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick media: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _shareWithCollateral(String url, {bool preferWhatsApp = true}) async {
+    final message = _getFinalMessage(url);
+
+    // Case 1: Custom user-picked image or video
+    if (_userUploadedMediaFile != null && await _userUploadedMediaFile!.exists()) {
+      setState(() => _isSharingWithMedia = true);
+      HapticFeedback.lightImpact();
+      try {
+        await Share.shareXFiles(
+          [XFile(_userUploadedMediaFile!.path)],
+          text: message,
+        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sharing failed: $e'), backgroundColor: AppColors.danger),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSharingWithMedia = false);
+      }
+      return;
+    }
+
+    // Case 2: Selected campaign collateral (image or video) uploaded by admin
+    if (_selectedCollateral != null && _selectedCollateral!.mediaUrl.isNotEmpty) {
+      setState(() => _isSharingWithMedia = true);
+      HapticFeedback.lightImpact();
+      try {
+        final dio = Dio();
+        final tempDir = await getTemporaryDirectory();
+        final isVideo = _selectedCollateral!.mediaType == 'video';
+        final ext = isVideo ? 'mp4' : 'jpg';
+        final savePath = '${tempDir.path}/taskwala_poster_${_selectedCollateral!.id}.$ext';
+
+        final file = File(savePath);
+        if (!await file.exists()) {
+          await dio.download(_selectedCollateral!.mediaUrl, savePath);
+        }
+
+        if (!mounted) return;
+        setState(() => _isSharingWithMedia = false);
+
+        await Share.shareXFiles(
+          [XFile(savePath)],
+          text: message,
+        );
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isSharingWithMedia = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not download poster, sharing text link instead: $e'),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+          if (preferWhatsApp) {
+            _shareViaWhatsApp(url);
+          } else {
+            Share.share(message);
+          }
+        }
+      }
+      return;
+    }
+
+    // Case 3: Link and text only
+    if (preferWhatsApp) {
+      _shareViaWhatsApp(url);
+    } else {
+      Share.share(message);
     }
   }
 
@@ -972,14 +1109,517 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
                       ),
                     ),
 
+                    const SizedBox(height: 24),
+
+                    // MARKETING COLLATERALS & WHATSAPP POSTERS SECTION
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceSecondary,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.photo_library_rounded, size: 20, color: AppColors.primary),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Marketing Collateral',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 14,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            '+350% Clicks',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w800,
+                                              color: const Color(0xFF059669),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      'Pick a poster or video to send along with your link',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Horizontal Collateral Selector Strip
+                          SizedBox(
+                            height: 120,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                // Option 0: Link Only / No Poster
+                                InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedCollateral = null;
+                                      _userUploadedMediaFile = null;
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Container(
+                                    width: 90,
+                                    margin: const EdgeInsets.only(right: 10),
+                                    decoration: BoxDecoration(
+                                      color: (_selectedCollateral == null && _userUploadedMediaFile == null)
+                                          ? AppColors.primary.withValues(alpha: 0.08)
+                                          : AppColors.surface,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: (_selectedCollateral == null && _userUploadedMediaFile == null)
+                                            ? AppColors.primary
+                                            : AppColors.border,
+                                        width: (_selectedCollateral == null && _userUploadedMediaFile == null) ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.link_off_rounded,
+                                          color: (_selectedCollateral == null && _userUploadedMediaFile == null)
+                                              ? AppColors.primary
+                                              : AppColors.textMuted,
+                                          size: 28,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Link Only\n(No Media)',
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: (_selectedCollateral == null && _userUploadedMediaFile == null)
+                                                ? AppColors.primary
+                                                : AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                                // Campaign Collaterals uploaded by Admin
+                                ...widget.campaign.collaterals.map((collateral) {
+                                  final isSelected = _selectedCollateral?.id == collateral.id && _userUploadedMediaFile == null;
+                                  final isVideo = collateral.mediaType == 'video';
+
+                                  return InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedCollateral = collateral;
+                                        _userUploadedMediaFile = null;
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: Container(
+                                      width: 100,
+                                      margin: const EdgeInsets.only(right: 10),
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : AppColors.surface,
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: isSelected ? AppColors.primary : AppColors.border,
+                                          width: isSelected ? 2.2 : 1,
+                                        ),
+                                      ),
+                                      child: Stack(
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                                            children: [
+                                              Expanded(
+                                                child: ClipRRect(
+                                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                                                  child: Image.network(
+                                                    collateral.thumbnailUrl ?? collateral.mediaUrl,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (_, __, ___) => Container(
+                                                      color: AppColors.surfaceSecondary,
+                                                      child: Icon(
+                                                        isVideo ? Icons.videocam_rounded : Icons.image_rounded,
+                                                        color: AppColors.textMuted,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                                color: AppColors.surface,
+                                                child: Text(
+                                                  collateral.title,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  textAlign: TextAlign.center,
+                                                  style: GoogleFonts.plusJakartaSans(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: AppColors.textPrimary,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Positioned(
+                                            top: 4,
+                                            left: 4,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.black.withValues(alpha: 0.7),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    isVideo ? Icons.play_arrow_rounded : Icons.photo_size_select_actual_rounded,
+                                                    size: 10,
+                                                    color: Colors.white,
+                                                  ),
+                                                  const SizedBox(width: 2),
+                                                  Text(
+                                                    isVideo ? 'VIDEO' : 'POSTER',
+                                                    style: GoogleFonts.plusJakartaSans(
+                                                      fontSize: 8,
+                                                      fontWeight: FontWeight.w800,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          if (isSelected)
+                                            Positioned(
+                                              top: 4,
+                                              right: 4,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(2),
+                                                decoration: const BoxDecoration(
+                                                  color: AppColors.primary,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(Icons.check, size: 12, color: Colors.white),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }),
+
+                                // Option: Upload / Pick from Device
+                                InkWell(
+                                  onTap: () {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      backgroundColor: AppColors.surface,
+                                      shape: const RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                                      ),
+                                      builder: (ctx) => SafeArea(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                'Upload Marketing Media',
+                                                style: GoogleFonts.plusJakartaSans(
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 12),
+                                              ListTile(
+                                                leading: const Icon(Icons.image_rounded, color: AppColors.primary),
+                                                title: const Text('Pick Image / Poster from Gallery'),
+                                                onTap: () {
+                                                  Navigator.pop(ctx);
+                                                  _pickUserMedia(false);
+                                                },
+                                              ),
+                                              ListTile(
+                                                leading: const Icon(Icons.videocam_rounded, color: Colors.purple),
+                                                title: const Text('Pick Promo Video from Gallery'),
+                                                onTap: () {
+                                                  Navigator.pop(ctx);
+                                                  _pickUserMedia(true);
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Container(
+                                    width: 100,
+                                    margin: const EdgeInsets.only(right: 10),
+                                    decoration: BoxDecoration(
+                                      color: (_userUploadedMediaFile != null)
+                                          ? AppColors.primary.withValues(alpha: 0.08)
+                                          : AppColors.surface,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: (_userUploadedMediaFile != null)
+                                            ? AppColors.primary
+                                            : AppColors.border,
+                                        width: (_userUploadedMediaFile != null) ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: (_userUploadedMediaFile != null)
+                                        ? Stack(
+                                            children: [
+                                              ClipRRect(
+                                                borderRadius: BorderRadius.circular(12),
+                                                child: _userUploadedMediaType == 'image'
+                                                    ? Image.file(
+                                                        _userUploadedMediaFile!,
+                                                        width: 100,
+                                                        height: 120,
+                                                        fit: BoxFit.cover,
+                                                      )
+                                                    : Container(
+                                                        color: Colors.black87,
+                                                        child: const Center(
+                                                          child: Icon(Icons.videocam_rounded, color: Colors.white, size: 32),
+                                                        ),
+                                                      ),
+                                              ),
+                                              Positioned(
+                                                top: 4,
+                                                right: 4,
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(2),
+                                                  decoration: const BoxDecoration(
+                                                    color: AppColors.primary,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(Icons.check, size: 12, color: Colors.white),
+                                                ),
+                                              ),
+                                              Positioned(
+                                                bottom: 0,
+                                                left: 0,
+                                                right: 0,
+                                                child: Container(
+                                                  color: Colors.black54,
+                                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                                  child: Text(
+                                                    'Custom',
+                                                    textAlign: TextAlign.center,
+                                                    style: GoogleFonts.plusJakartaSans(
+                                                      color: Colors.white,
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        : Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(Icons.add_photo_alternate_rounded,
+                                                    color: AppColors.primary, size: 20),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                '+ Upload\nPoster/Video',
+                                                textAlign: TextAlign.center,
+                                                style: GoogleFonts.plusJakartaSans(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+                          const Divider(height: 1),
+                          const SizedBox(height: 14),
+
+                          // PROMOTIONAL CAPTION TEMPLATES
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Promotional Message Copy',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () => setState(() => _isCustomCaption = !_isCustomCaption),
+                                child: Text(
+                                  _isCustomCaption ? 'Use Templates' : 'Write Custom',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+
+                          if (!_isCustomCaption) ...[
+                            // Template Chips
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                ChoiceChip(
+                                  label: const Text('🔥 Special Deal'),
+                                  selected: _selectedTemplateIndex == 0,
+                                  onSelected: (s) => setState(() => _selectedTemplateIndex = 0),
+                                  selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                                  labelStyle: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: _selectedTemplateIndex == 0 ? AppColors.primary : AppColors.textSecondary,
+                                  ),
+                                ),
+                                ChoiceChip(
+                                  label: const Text('👋 Friends Share'),
+                                  selected: _selectedTemplateIndex == 1,
+                                  onSelected: (s) => setState(() => _selectedTemplateIndex = 1),
+                                  selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                                  labelStyle: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: _selectedTemplateIndex == 1 ? AppColors.primary : AppColors.textSecondary,
+                                  ),
+                                ),
+                                ChoiceChip(
+                                  label: const Text('⚡ Cashback Alert'),
+                                  selected: _selectedTemplateIndex == 2,
+                                  onSelected: (s) => setState(() => _selectedTemplateIndex = 2),
+                                  selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                                  labelStyle: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: _selectedTemplateIndex == 2 ? AppColors.primary : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+
+                            // Preview Box
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Text(
+                                _getFinalMessage(_generatedLink!.secureUrl),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ] else ...[
+                            TextFormField(
+                              controller: _customCaptionController,
+                              maxLines: 3,
+                              decoration: InputDecoration(
+                                hintText: 'Type your promotional message here... (link is automatically appended at the bottom)',
+                                hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppColors.textMuted),
+                                filled: true,
+                                fillColor: AppColors.surface,
+                                contentPadding: const EdgeInsets.all(12),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.border),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.border),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                                ),
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
                     const SizedBox(height: 20),
 
-                    // PRIMARY ACTION: WHATSAPP SHARE BUTTON
+                    // PRIMARY ACTION: WHATSAPP SHARE BUTTON WITH MEDIA
                     SizedBox(
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton.icon(
-                        onPressed: () => _shareViaWhatsApp(_generatedLink!.secureUrl),
+                        onPressed: _isSharingWithMedia
+                            ? null
+                            : () => _shareWithCollateral(_generatedLink!.secureUrl, preferWhatsApp: true),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF25D366),
                           foregroundColor: Colors.white,
@@ -987,9 +1627,19 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
                           shadowColor: const Color(0xFF25D366).withValues(alpha: 0.4),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
-                        icon: const Icon(Icons.send_rounded, size: 18),
+                        icon: _isSharingWithMedia
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Icon(Icons.send_rounded, size: 18),
                         label: Text(
-                          'Share on WhatsApp',
+                          _isSharingWithMedia
+                              ? 'Preparing Media...'
+                              : (_selectedCollateral != null || _userUploadedMediaFile != null)
+                                  ? 'Share on WhatsApp (with Poster)'
+                                  : 'Share on WhatsApp',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -1005,11 +1655,9 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () {
-                              Share.share(
-                                'Check out ${widget.campaign.name} on Taskwala and earn ₹${_customerPayout.toStringAsFixed(0)} cashback: ${_generatedLink!.secureUrl}',
-                              );
-                            },
+                            onPressed: _isSharingWithMedia
+                                ? null
+                                : () => _shareWithCollateral(_generatedLink!.secureUrl, preferWhatsApp: false),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.textPrimary,
                               side: const BorderSide(color: AppColors.border, width: 1.2),

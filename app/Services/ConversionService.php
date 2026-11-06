@@ -136,23 +136,47 @@ class ConversionService
                 }
             }
 
-            AuditService::log(
-                action: 'conversion_created',
-                entityType: Conversion::class,
-                entityId: $conversion->id,
-                newValues: [
-                    'conversion_id' => $conversion->id,
-                    'status' => $normalizedStatus,
-                    'affiliate_commission' => $affiliateCommission,
-                    'customer_payout' => $customerPayout,
-                ],
-                actorType: $provider ? 'system' : 'admin'
-            );
+                AuditService::log(
+                    action: 'conversion_created',
+                    entityType: Conversion::class,
+                    entityId: $conversion->id,
+                    newValues: [
+                        'conversion_id' => $conversion->id,
+                        'status' => $normalizedStatus,
+                        'affiliate_commission' => $affiliateCommission,
+                        'customer_payout' => $customerPayout,
+                    ],
+                    actorType: $provider ? 'system' : 'admin'
+                );
 
-            return [
-                'conversion' => $conversion,
-                'is_duplicate' => false,
-            ];
+                // Event-Driven Push Notification
+                try {
+                    $dispatcher = app(NotificationDispatcherService::class);
+                    if ($normalizedStatus === 'approved') {
+                        $dispatcher->sendToUser(
+                            user: $click->user,
+                            title: "💰 Commission Earned!",
+                            body: "₹" . number_format($affiliateCommission, 0) . " credited to your wallet for {$click->campaign->name}!",
+                            deeplink: "/wallet",
+                            imageUrl: $click->campaign->logo
+                        );
+                    } else {
+                        $dispatcher->sendToUser(
+                            user: $click->user,
+                            title: "🎉 Lead Tracked!",
+                            body: "Your lead for {$click->campaign->name} was recorded. Pending reward: ₹" . number_format($affiliateCommission, 0),
+                            deeplink: "/reports",
+                            imageUrl: $click->campaign->logo
+                        );
+                    }
+                } catch (\Throwable $ne) {
+                    \Illuminate\Support\Facades\Log::warning("Failed to dispatch conversion push: " . $ne->getMessage());
+                }
+
+                return [
+                    'conversion' => $conversion,
+                    'is_duplicate' => false,
+                ];
         });
     }
 
@@ -222,6 +246,31 @@ class ConversionService
                 actorType: 'admin',
                 actorId: $adminId
             );
+
+            // Event-Driven Push Notification on Status Update
+            try {
+                $dispatcher = app(NotificationDispatcherService::class);
+                $campaignName = $conversion->campaign?->name ?? 'Campaign';
+                if ($newStatus === 'approved') {
+                    $dispatcher->sendToUser(
+                        user: $conversion->user,
+                        title: "💰 Commission Approved!",
+                        body: "₹" . number_format($commission, 0) . " approved and credited to your wallet for {$campaignName}!",
+                        deeplink: "/wallet",
+                        imageUrl: $conversion->campaign?->logo
+                    );
+                } elseif (in_array($newStatus, ['rejected', 'declined'])) {
+                    $dispatcher->sendToUser(
+                        user: $conversion->user,
+                        title: "⚠️ Lead Update",
+                        body: "Your conversion for {$campaignName} was not approved." . ($reason ? " Reason: {$reason}" : ""),
+                        deeplink: "/reports",
+                        imageUrl: $conversion->campaign?->logo
+                    );
+                }
+            } catch (\Throwable $ne) {
+                \Illuminate\Support\Facades\Log::warning("Failed to dispatch status update push: " . $ne->getMessage());
+            }
 
             return $conversion;
         });
