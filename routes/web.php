@@ -199,9 +199,13 @@ Route::get('/system/debug-status/{token}', function ($token, \Illuminate\Http\Re
     try {
         $logFile = storage_path('logs/laravel.log');
         $lastLog = '';
-        if (file_exists($logFile)) {
-            $lines = file($logFile);
-            $lastLog = implode('', array_slice($lines, -50));
+        if (file_exists($logFile) && filesize($logFile) > 0) {
+            $fp = fopen($logFile, 'r');
+            $size = filesize($logFile);
+            $offset = max(0, $size - 6000);
+            fseek($fp, $offset);
+            $lastLog = fread($fp, 6000);
+            fclose($fp);
         }
 
         $tgApi = 'untested';
