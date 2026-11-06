@@ -48,14 +48,18 @@ class TelethonManager:
             return self.client
 
         from telethon.network import ConnectionTcpIntermediate
+        from telethon.sessions import StringSession
         session = StringSession(session_str or self.session_str)
+        if not (session_str or self.session_str) or not getattr(session, 'auth_key', None):
+            session.set_dc(5, "91.108.56.178", 443)
+
         self.client = TelegramClient(
             session,
             effective_api_id,
             effective_api_hash,
             connection=ConnectionTcpIntermediate,
-            connection_retries=15,
-            timeout=30,
+            connection_retries=10,
+            timeout=20,
             retry_delay=2,
             auto_reconnect=True,
         )

@@ -30,6 +30,9 @@ try:
         PhoneCodeExpiredError,
         PasswordHashInvalidError,
         FloodWaitError,
+        PhoneMigrateError,
+        NetworkMigrateError,
+        UserMigrateError,
     )
     from telethon.tl.types import Channel, Chat, User
     from config import API_ID, API_HASH, MEDIA_STORAGE_DIR
@@ -46,13 +49,22 @@ except ImportError as ie:
 
 def get_client(session_str: str, api_id: int, api_hash: str) -> TelegramClient:
     from telethon.network import ConnectionTcpIntermediate
+    from telethon.sessions import StringSession
+
+    session = StringSession(session_str or "")
+    # Default fresh/unauthenticated sessions directly to DC 5 (Singapore: 91.108.56.178:443).
+    # On cPanel hosting, DC 2 (149.154.167.51) is blocked by the host firewall.
+    # DC 5 is fully reachable and is the native data center for Indian (+91) accounts.
+    if not session_str or not getattr(session, "auth_key", None):
+        session.set_dc(5, "91.108.56.178", 443)
+
     return TelegramClient(
-        StringSession(session_str or ""),
+        session,
         api_id,
         api_hash,
         connection=ConnectionTcpIntermediate,
-        connection_retries=15,
-        timeout=30,
+        connection_retries=10,
+        timeout=20,
         retry_delay=2,
         auto_reconnect=True,
     )
@@ -66,20 +78,45 @@ async def cmd_send_code(args):
     client = get_client("", api_id, api_hash)
     try:
         await client.connect()
-        result = await client.send_code_request(phone)
+        try:
+            result = await client.send_code_request(phone)
+        except PhoneMigrateError as pme:
+            # If phone number belongs to another Telegram DC, migrate cleanly
+            dc_ips = {
+                1: "149.154.175.53",
+                2: "149.154.167.51",
+                3: "149.154.175.100",
+                4: "149.154.167.91",
+                5: "91.108.56.178",
+            }
+            target_ip = dc_ips.get(pme.new_dc, "91.108.56.178")
+            await client.disconnect()
+            migrated_session = StringSession("")
+            migrated_session.set_dc(pme.new_dc, target_ip, 443)
+            client = TelegramClient(migrated_session, api_id, api_hash)
+            await client.connect()
+            result = await client.send_code_request(phone)
+
         session_str = client.session.save()
+
+        # Determine delivery channel (Telegram App vs SMS)
+        delivery_channel = "Telegram App"
+        type_str = str(getattr(result, "type", ""))
+        if "Sms" in type_str:
+            delivery_channel = "SMS"
 
         print(json.dumps({
             "success": True,
             "phone": phone,
             "phone_code_hash": result.phone_code_hash,
             "session_string": session_str,
-            "message": f"Login code sent to {phone}. Please check your Telegram app or SMS.",
+            "delivery_channel": delivery_channel,
+            "message": f"Login code sent to your {delivery_channel}! Check your official Telegram app (notification chat, NOT SMS).",
         }))
     except FloodWaitError as e:
         print(json.dumps({
             "success": False,
-            "error": f"Telegram FloodWait: Please wait {e.seconds} seconds before trying again.",
+            "error": f"Telegram FloodWait: Telegram requires you to wait {e.seconds} seconds before requesting a new login code. Please wait {max(1, e.seconds // 60)} minutes.",
             "flood_wait_seconds": e.seconds,
         }))
     except Exception as e:

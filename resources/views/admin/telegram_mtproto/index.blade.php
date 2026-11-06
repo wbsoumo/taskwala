@@ -96,12 +96,18 @@
                         <!-- STEP 2: ENTER OTP CODE -->
                         <div id="stepCode" style="display: none;">
                             <div class="alert alert-info py-2 px-3 small mb-3">
-                                <i class="fas fa-info-circle mr-1"></i> Login code sent to <strong id="sentPhoneDisplay"></strong>. Check your Telegram app.
+                                <div class="font-weight-bold mb-1">
+                                    <i class="fab fa-telegram-plane mr-1 text-primary"></i> Login code sent to <strong id="sentPhoneDisplay"></strong>
+                                </div>
+                                <div class="text-dark">
+                                    <strong>Important:</strong> Check your <strong>Telegram app</strong> (the official <em>Telegram</em> chat with blue checkmark, <u>not standard phone SMS</u>).
+                                </div>
                             </div>
 
                             <div class="form-group">
                                 <label class="font-weight-bold small">Telegram OTP Code <span class="text-danger">*</span></label>
                                 <input type="text" id="inputOtpCode" class="form-control form-control-lg text-center font-weight-bold" placeholder="12345" maxlength="8" style="letter-spacing: 4px;">
+                                <small class="text-muted text-center d-block mt-1">Usually a 5-digit number sent by Telegram.</small>
                             </div>
 
                             <button type="button" class="btn btn-success btn-block font-weight-bold shadow-sm" id="btnVerifyCode" onclick="submitVerifyCode()">
