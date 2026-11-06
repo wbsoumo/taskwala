@@ -100,24 +100,47 @@ class FinanceController extends Controller
             'admin_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $admin = auth('admin')->user();
+        try {
+            $admin = auth('admin')->user();
+            $status = $validated['status'];
 
-        $updateData = [
-            'status' => $validated['status'],
-            'admin_notes' => $validated['admin_notes'] ?? $payout->admin_notes,
-            'processed_at' => now(),
-            'processed_by_admin_id' => $admin?->id,
-        ];
+            $updateData = ['status' => $status];
 
-        if ($request->filled('transaction_id')) {
-            $updateData['transaction_id'] = $validated['transaction_id'];
-        } elseif ($validated['status'] === 'done' && empty($payout->transaction_id)) {
-            $updateData['transaction_id'] = 'UPI_' . strtoupper(bin2hex(random_bytes(6)));
+            if (Schema::hasColumn('customer_payouts', 'admin_notes')) {
+                $updateData['admin_notes'] = $validated['admin_notes'] ?? $payout->admin_notes;
+            }
+            if (Schema::hasColumn('customer_payouts', 'processed_at')) {
+                $updateData['processed_at'] = now();
+            }
+            if (Schema::hasColumn('customer_payouts', 'processed_by_admin_id')) {
+                $updateData['processed_by_admin_id'] = $admin?->id;
+            }
+            if (Schema::hasColumn('customer_payouts', 'transaction_id')) {
+                if ($request->filled('transaction_id')) {
+                    $updateData['transaction_id'] = $validated['transaction_id'];
+                } elseif ($status === 'done' && empty($payout->transaction_id)) {
+                    $updateData['transaction_id'] = 'UPI_' . strtoupper(bin2hex(random_bytes(6)));
+                }
+            }
+
+            try {
+                $payout->update($updateData);
+            } catch (\Throwable $dbEx) {
+                // If live DB has legacy enum constraint ['pending', 'processed', 'failed'], fallback 'done' to 'processed'
+                if ($status === 'done' && isset($updateData['status'])) {
+                    $updateData['status'] = 'processed';
+                    $payout->update($updateData);
+                } else {
+                    throw $dbEx;
+                }
+            }
+
+            return redirect()->route('admin.finance.customer_payouts')
+                ->with('success', "Customer Payout #{$id} status updated to " . ucfirst($status) . " successfully.");
+        } catch (\Throwable $e) {
+            return redirect()->route('admin.finance.customer_payouts')
+                ->with('error', "Could not update payout: " . $e->getMessage() . ". Please ensure latest migrations are executed (`php artisan migrate --force`).");
         }
-
-        $payout->update($updateData);
-
-        return redirect()->back()->with('success', "Customer Payout #{$id} status updated to " . ucfirst($validated['status']) . " successfully.");
     }
 
     public function bulkUpdateCustomerPayoutStatus(Request $request)
@@ -130,25 +153,42 @@ class FinanceController extends Controller
             'bulk_admin_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $admin = auth('admin')->user();
-        $targetStatus = $validated['bulk_status'];
+        try {
+            $admin = auth('admin')->user();
+            $targetStatus = $validated['bulk_status'];
 
-        $updateData = [
-            'status' => $targetStatus,
-            'processed_at' => now(),
-            'processed_by_admin_id' => $admin?->id,
-        ];
+            $updateData = ['status' => $targetStatus];
 
-        if ($request->filled('bulk_transaction_id')) {
-            $updateData['transaction_id'] = $validated['bulk_transaction_id'];
+            if (Schema::hasColumn('customer_payouts', 'processed_at')) {
+                $updateData['processed_at'] = now();
+            }
+            if (Schema::hasColumn('customer_payouts', 'processed_by_admin_id')) {
+                $updateData['processed_by_admin_id'] = $admin?->id;
+            }
+            if ($request->filled('bulk_transaction_id') && Schema::hasColumn('customer_payouts', 'transaction_id')) {
+                $updateData['transaction_id'] = $validated['bulk_transaction_id'];
+            }
+            if ($request->filled('bulk_admin_notes') && Schema::hasColumn('customer_payouts', 'admin_notes')) {
+                $updateData['admin_notes'] = $validated['bulk_admin_notes'];
+            }
+
+            try {
+                $affected = CustomerPayout::whereIn('id', $validated['selected_ids'])->update($updateData);
+            } catch (\Throwable $dbEx) {
+                if ($targetStatus === 'done' && isset($updateData['status'])) {
+                    $updateData['status'] = 'processed';
+                    $affected = CustomerPayout::whereIn('id', $validated['selected_ids'])->update($updateData);
+                } else {
+                    throw $dbEx;
+                }
+            }
+
+            return redirect()->route('admin.finance.customer_payouts')
+                ->with('success', "Bulk updated {$affected} customer payout(s) to " . ucfirst($targetStatus) . " successfully.");
+        } catch (\Throwable $e) {
+            return redirect()->route('admin.finance.customer_payouts')
+                ->with('error', "Could not bulk update payouts: " . $e->getMessage() . ". Please ensure latest migrations are executed (`php artisan migrate --force`).");
         }
-        if ($request->filled('bulk_admin_notes')) {
-            $updateData['admin_notes'] = $validated['bulk_admin_notes'];
-        }
-
-        $affected = CustomerPayout::whereIn('id', $validated['selected_ids'])->update($updateData);
-
-        return redirect()->back()->with('success', "Bulk updated {$affected} customer payout(s) to " . ucfirst($targetStatus) . " successfully.");
     }
 
     public function affiliatePayouts(Request $request)

@@ -45,6 +45,6 @@ class CustomerPayout extends Model
 
     public function processedByAdmin()
     {
-        return $this->belongsTo(User::class, 'processed_by_admin_id');
+        return $this->belongsTo(Admin::class, 'processed_by_admin_id');
     }
 }
