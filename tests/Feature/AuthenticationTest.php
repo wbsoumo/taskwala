@@ -179,4 +179,28 @@ class AuthenticationTest extends TestCase
         $resetFormResponse->assertDontSee('Dev Code');
         $resetFormResponse->assertDontSee('debug_otp');
     }
+
+    public function test_web_registration_page_loads_and_registers_user()
+    {
+        $getResponse = $this->get(route('user.register'));
+        $getResponse->assertStatus(200);
+        $getResponse->assertSee('Join Taskwala');
+
+        $postResponse = $this->post(route('user.register'), [
+            'name' => 'New Web Partner',
+            'email' => 'newwebpartner@test.com',
+            'mobile_number' => '9876543299',
+            'password' => 'SecurePass123!',
+            'password_confirmation' => 'SecurePass123!',
+            'upi_id' => 'partner@okhdfc',
+            'upi_holder_name' => 'New Web Partner',
+        ]);
+
+        $postResponse->assertRedirect(route('user.dashboard'));
+        $this->assertDatabaseHas('users', [
+            'email' => 'newwebpartner@test.com',
+            'mobile_number' => '9876543299',
+            'upi_id' => 'partner@okhdfc',
+        ]);
+    }
 }
