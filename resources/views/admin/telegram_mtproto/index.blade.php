@@ -131,42 +131,57 @@
             </div>
         </div>
 
-        <!-- CARD 2: PYTHON BACKGROUND DAEMON STATUS -->
+        <!-- CARD 2: PYTHON TELETHON / CPANEL ENGINE STATUS -->
         <div class="card card-outline {{ ($serviceHealth['online'] ?? false) ? 'card-success' : 'card-warning' }} shadow-sm mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h3 class="card-title font-weight-bold text-dark">
-                    <i class="fab fa-python text-warning mr-1"></i> Telethon Daemon
+                    <i class="fab fa-python text-warning mr-1"></i> Telethon Daemon / Engine
                 </h3>
                 @if($serviceHealth['online'] ?? false)
-                    <span class="badge badge-success px-2 py-1"><i class="fas fa-circle text-white fa-xs mr-1"></i> Online</span>
+                    @if(($serviceHealth['mode'] ?? '') === 'daemon')
+                        <span class="badge badge-success px-2 py-1"><i class="fas fa-circle text-white fa-xs mr-1"></i> Daemon Online</span>
+                    @else
+                        <span class="badge badge-success px-2 py-1"><i class="fas fa-check-circle mr-1"></i> cPanel Direct Active</span>
+                    @endif
                 @else
-                    <span class="badge badge-warning px-2 py-1"><i class="fas fa-exclamation-triangle mr-1"></i> Offline</span>
+                    <span class="badge badge-warning px-2 py-1"><i class="fas fa-exclamation-triangle mr-1"></i> Setup Needed</span>
                 @endif
             </div>
             <div class="card-body small">
                 <div class="d-flex justify-content-between py-1 border-bottom">
-                    <span class="text-muted">Service Engine:</span>
-                    <span class="font-weight-bold">Python Telethon 1.45</span>
+                    <span class="text-muted">Execution Mode:</span>
+                    <span class="font-weight-bold text-success">
+                        @if(($serviceHealth['mode'] ?? '') === 'daemon')
+                            Persistent Daemon (Port 5001)
+                        @else
+                            cPanel Direct CLI (proc_open)
+                        @endif
+                    </span>
                 </div>
                 <div class="d-flex justify-content-between py-1 border-bottom">
-                    <span class="text-muted">Live Listener:</span>
-                    @if($serviceHealth['monitoring'] ?? false)
-                        <span class="badge badge-success">Active & Streaming</span>
-                    @else
-                        <span class="badge badge-secondary">Stopped</span>
-                    @endif
+                    <span class="text-muted">Telethon Version:</span>
+                    <span class="font-weight-bold">{{ $serviceHealth['telethon_version'] ?? '1.45.0' }}</span>
+                </div>
+                <div class="d-flex justify-content-between py-1 border-bottom">
+                    <span class="text-muted">Auto Deals Scraper:</span>
+                    <span class="badge badge-primary"><i class="fas fa-clock mr-1"></i> cPanel Cron (10m)</span>
                 </div>
                 <div class="d-flex justify-content-between py-1">
-                    <span class="text-muted">Channels Streamed:</span>
-                    <span class="font-weight-bold">{{ count($serviceHealth['monitored_channels'] ?? []) }}</span>
+                    <span class="text-muted">Channels Monitored:</span>
+                    <span class="font-weight-bold">{{ $stats['monitored_channels'] ?? 0 }}</span>
                 </div>
 
                 @if(!($serviceHealth['online'] ?? false))
                     <div class="alert alert-light border mt-3 mb-0 small">
-                        <strong>To Start Service:</strong> Run in terminal:
+                        <strong>cPanel Quick Setup:</strong> In cPanel Terminal run:
                         <div class="bg-dark text-white p-2 rounded mt-1 font-monospace" style="font-family: monospace;">
-                            ./python_service/venv/bin/python3 python_service/server.py
+                            pip3 install telethon aiohttp python-dotenv
                         </div>
+                    </div>
+                @else
+                    <div class="mt-2 text-muted text-xs">
+                        <i class="fas fa-info-circle text-info mr-1"></i> Background deals sync is triggered via cPanel Cron:
+                        <code class="d-block mt-1 text-dark bg-light p-1 rounded font-monospace">* * * * * cd /home/ehcubedv/public_html && php artisan schedule:run >> /dev/null 2>&1</code>
                     </div>
                 @endif
             </div>
@@ -191,6 +206,14 @@
                             @csrf
                             <button type="submit" class="btn btn-outline-primary btn-sm font-weight-bold shadow-sm" {{ !($account && $account->is_connected) ? 'disabled' : '' }}>
                                 <i class="fas fa-sync-alt mr-1"></i> Refresh Channels
+                            </button>
+                        </form>
+
+                        <!-- Immediate Deal Sync All Button -->
+                        <form action="{{ route('admin.telegram_mtproto.sync_all') }}" method="POST" class="d-inline-block mr-1">
+                            @csrf
+                            <button type="submit" class="btn btn-warning btn-sm font-weight-bold shadow-sm" {{ ($stats['monitored_channels'] ?? 0) === 0 ? 'disabled' : '' }} title="Immediately scrape recent deals from all monitored channels">
+                                <i class="fas fa-bolt mr-1"></i> Sync All Now
                             </button>
                         </form>
 

@@ -15,10 +15,17 @@ class EarnKaroService
 
     public function __construct()
     {
-        $this->enabled = (bool) Setting::get('deals_earnkaro_enabled', '0');
-        $this->apiKey = Setting::get('deals_earnkaro_api_key');
-        $this->publisherId = Setting::get('deals_earnkaro_publisher_id');
-        $this->endpoint = Setting::get('deals_earnkaro_api_endpoint', 'https://api.earnkaro.com/api/v1/deals/generate');
+        try {
+            $this->enabled = (bool) Setting::get('deals_earnkaro_enabled', '0');
+            $this->apiKey = Setting::get('deals_earnkaro_api_key');
+            $this->publisherId = Setting::get('deals_earnkaro_publisher_id');
+            $this->endpoint = Setting::get('deals_earnkaro_api_endpoint', 'https://api.earnkaro.com/api/v1/deals/generate');
+        } catch (\Throwable $e) {
+            $this->enabled = false;
+            $this->apiKey = null;
+            $this->publisherId = null;
+            $this->endpoint = 'https://api.earnkaro.com/api/v1/deals/generate';
+        }
     }
 
     /**

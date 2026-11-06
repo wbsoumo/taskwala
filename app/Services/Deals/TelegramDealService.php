@@ -16,11 +16,18 @@ class TelegramDealService
 
     public function __construct()
     {
-        $this->botToken = Setting::get('deals_telegram_bot_token');
-        $rawChannels = Setting::get('deals_telegram_channels', '@dealsmagnet, @lootdeals');
-        $this->channels = array_filter(array_map('trim', explode(',', $rawChannels)));
-        $this->enabled = (bool) Setting::get('deals_telegram_enabled', '0');
-        $this->apiBase = rtrim(Setting::get('deals_telegram_api_base', 'https://api.telegram.org'), '/');
+        try {
+            $this->botToken = Setting::get('deals_telegram_bot_token');
+            $rawChannels = Setting::get('deals_telegram_channels', '@dealsmagnet, @lootdeals');
+            $this->channels = array_filter(array_map('trim', explode(',', $rawChannels)));
+            $this->enabled = (bool) Setting::get('deals_telegram_enabled', '0');
+            $this->apiBase = rtrim(Setting::get('deals_telegram_api_base', 'https://api.telegram.org'), '/');
+        } catch (\Throwable $e) {
+            $this->botToken = null;
+            $this->channels = [];
+            $this->enabled = false;
+            $this->apiBase = 'https://api.telegram.org';
+        }
     }
 
     /**

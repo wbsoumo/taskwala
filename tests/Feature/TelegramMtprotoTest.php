@@ -53,6 +53,10 @@ class TelegramMtprotoTest extends TestCase
     public function test_admin_can_send_otp_code()
     {
         Http::fake([
+            'http://127.0.0.1:5001/health' => Http::response([
+                'status' => 'healthy',
+                'connected' => false,
+            ], 200),
             'http://127.0.0.1:5001/auth/send-code' => Http::response([
                 'success' => true,
                 'phone' => '+919876543210',
@@ -88,6 +92,10 @@ class TelegramMtprotoTest extends TestCase
         ]);
 
         Http::fake([
+            'http://127.0.0.1:5001/health' => Http::response([
+                'status' => 'healthy',
+                'connected' => false,
+            ], 200),
             'http://127.0.0.1:5001/auth/verify-code' => Http::response([
                 'success' => true,
                 'needs_2fa' => false,
@@ -180,8 +188,13 @@ class TelegramMtprotoTest extends TestCase
         ]);
 
         Http::fake([
+            'http://127.0.0.1:5001/health' => Http::response([
+                'status' => 'healthy',
+                'connected' => false,
+            ], 200),
             'http://127.0.0.1:5001/channels/sync-history' => Http::response([
                 'success' => true,
+                'status' => 'syncing',
                 'message' => 'Historical sync started',
             ], 200),
         ]);

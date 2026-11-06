@@ -94,6 +94,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/telegram-mtproto/channels/{id}/toggle', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'toggleChannelMonitoring'])->name('telegram_mtproto.channels.toggle');
         Route::post('/telegram-mtproto/channels/bulk', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'bulkUpdateMonitoring'])->name('telegram_mtproto.channels.bulk');
         Route::post('/telegram-mtproto/channels/{id}/sync-history', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'syncChannelHistory'])->name('telegram_mtproto.channels.sync_history');
+        Route::post('/telegram-mtproto/sync-all', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'syncAllMonitored'])->name('telegram_mtproto.sync_all');
         Route::post('/telegram-mtproto/monitoring/start', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'startMonitoring'])->name('telegram_mtproto.monitoring.start');
         Route::post('/telegram-mtproto/monitoring/stop', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'stopMonitoring'])->name('telegram_mtproto.monitoring.stop');
         Route::get('/telegram-mtproto/messages', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'messages'])->name('telegram_mtproto.messages');
@@ -168,15 +169,28 @@ Route::prefix('admin')->name('admin.')->group(function () {
     });
 });
 
-// Secure cPanel migration helper
+// Secure cPanel migration and maintenance helper
 Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\Request $request) {
     if ($token !== 'taskwala_migrate_sec_9981') {
         abort(403, 'Unauthorized');
     }
     try {
         $pullOutput = '';
-        if ($request->boolean('pull') && function_exists('shell_exec')) {
-            $pullOutput = @shell_exec('git pull origin main 2>&1') ?? 'git pull executed.';
+        if ($request->boolean('pull')) {
+            $cmd = 'git pull origin main 2>&1';
+            $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+            $proc = @proc_open($cmd, $descriptors, $pipes, base_path());
+            if (is_resource($proc)) {
+                fclose($pipes[0]);
+                $stdout = stream_get_contents($pipes[1]);
+                $stderr = stream_get_contents($pipes[2]);
+                fclose($pipes[1]);
+                fclose($pipes[2]);
+                $exitCode = proc_close($proc);
+                $pullOutput = trim($stdout . "\n" . $stderr) . " (exit code {$exitCode})";
+            } elseif (function_exists('shell_exec')) {
+                $pullOutput = @shell_exec($cmd) ?? 'git pull executed.';
+            }
         }
 
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
@@ -193,6 +207,28 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
             $output .= "\n" . \Illuminate\Support\Facades\Artisan::output();
         }
 
+        // Test python candidates
+        $pythonDiagnostics = [];
+        $runCmd = function ($commandLine) {
+            $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+            $proc = @proc_open($commandLine, $descriptors, $pipes, base_path());
+            if (!is_resource($proc)) return 'proc_open failed';
+            fclose($pipes[0]);
+            $out = stream_get_contents($pipes[1]);
+            $err = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            proc_close($proc);
+            return trim($out . ' ' . $err);
+        };
+
+        $pythonDiagnostics['python3_version'] = $runCmd('python3 --version');
+        $pythonDiagnostics['usr_bin_python3'] = $runCmd('/usr/bin/python3 --version');
+        $pythonDiagnostics['which_python3'] = $runCmd('which python3');
+        $pythonDiagnostics['pip3_version'] = $runCmd('pip3 --version');
+        $pythonDiagnostics['telethon_check'] = $runCmd('python3 -c "import telethon; print(telethon.__version__)"');
+        $pythonDiagnostics['cli_status'] = $runCmd('python3 ' . base_path('python_service/telethon_cli.py check-status'));
+
         $disabledFunctions = explode(',', ini_get('disable_functions'));
         $disabledFunctions = array_map('trim', $disabledFunctions);
 
@@ -203,15 +239,12 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
             'migration_output' => $output,
             'optimize_output' => $optimizeOutput,
             'deals_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deals'),
+            'python_diagnostics' => $pythonDiagnostics,
             'cpanel_env' => [
                 'php_version' => PHP_VERSION,
                 'user' => get_current_user(),
                 'base_path' => base_path(),
-                'disabled_functions' => $disabledFunctions,
-                'exec_enabled' => function_exists('exec') && !in_array('exec', $disabledFunctions),
-                'shell_exec_enabled' => function_exists('shell_exec') && !in_array('shell_exec', $disabledFunctions),
                 'proc_open_enabled' => function_exists('proc_open') && !in_array('proc_open', $disabledFunctions),
-                'system_enabled' => function_exists('system') && !in_array('system', $disabledFunctions),
             ],
         ]);
     } catch (\Throwable $e) {

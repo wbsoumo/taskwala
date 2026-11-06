@@ -114,6 +114,7 @@ class TelegramMtprotoController extends Controller
         if ($result['success'] ?? false) {
             $account->update([
                 'phone_code_hash' => $result['phone_code_hash'] ?? null,
+                'session_string' => $result['session_string'] ?? $account->session_string,
                 'status' => 'code_sent',
                 'last_error' => null,
             ]);
@@ -152,15 +153,21 @@ class TelegramMtprotoController extends Controller
         }
 
         $result = $this->telethonService->verifyCode(
-            $validated['code'],
-            $account->phone_number,
-            $account->phone_code_hash
+            code: $validated['code'],
+            phone: $account->phone_number,
+            phoneCodeHash: $account->phone_code_hash,
+            sessionString: $account->session_string,
+            apiId: $account->api_id,
+            apiHash: $account->api_hash
         );
 
         if ($result['success'] ?? false) {
             // Check if 2FA password is required
             if ($result['needs_2fa'] ?? false) {
-                $account->update(['status' => '2fa_required']);
+                $account->update([
+                    'status' => '2fa_required',
+                    'session_string' => $result['session_string'] ?? $account->session_string,
+                ]);
                 return response()->json([
                     'success' => true,
                     'needs_2fa' => true,
@@ -202,7 +209,12 @@ class TelegramMtprotoController extends Controller
             return response()->json(['success' => false, 'message' => 'No active login session requiring 2FA.'], 404);
         }
 
-        $result = $this->telethonService->verify2FA($validated['password']);
+        $result = $this->telethonService->verify2FA(
+            password: $validated['password'],
+            sessionString: $account->session_string,
+            apiId: $account->api_id,
+            apiHash: $account->api_hash
+        );
 
         if ($result['success'] ?? false) {
             $this->storeConnectedAccount($account, $result);
@@ -299,11 +311,23 @@ class TelegramMtprotoController extends Controller
     }
 
     /**
+     * Trigger immediate synchronization of all monitored channels (cPanel / manual run).
+     */
+    public function syncAllMonitored(Request $request)
+    {
+        $limit = (int) $request->input('limit', 25);
+        \Illuminate\Support\Facades\Artisan::call('telegram:mtproto-sync', ['--limit' => $limit]);
+
+        return back()->with('success', 'Monitored channels synchronization completed.');
+    }
+
+    /**
      * Trigger historical message sync for a channel.
      */
     public function syncChannelHistory(Request $request, $id)
     {
         $channel = TelegramMonitoredChannel::findOrFail($id);
+        $account = TelegramAccount::first();
         $limit = (int) $request->input('limit', 100);
 
         $channel->update([
@@ -311,13 +335,29 @@ class TelegramMtprotoController extends Controller
             'historical_limit' => $limit,
         ]);
 
-        $res = $this->telethonService->syncChannelHistory($channel->channel_id, $limit);
+        $res = $this->telethonService->syncChannelHistory(
+            channelId: $channel->channel_id,
+            limit: $limit,
+            sessionString: $account?->session_string,
+            apiId: $account?->api_id,
+            apiHash: $account?->api_hash
+        );
 
         if ($res['success'] ?? false) {
+            $syncStatus = $res['status'] ?? 'synced';
+            $channel->update([
+                'sync_status' => $syncStatus,
+                'last_scraped_at' => now(),
+                'total_messages_count' => $channel->messages()->count(),
+                'total_deals_count' => $channel->messages()->where('is_deal', true)->count(),
+            ]);
+
             return response()->json([
                 'success' => true,
-                'message' => "Historical message sync started for '{$channel->title}' (limit: {$limit} messages).",
-                'status' => 'syncing',
+                'message' => $res['message'] ?? "Historical message sync completed for '{$channel->title}' (limit: {$limit} messages).",
+                'status' => $syncStatus,
+                'messages_imported' => $res['messages_imported'] ?? 0,
+                'deals_found' => $res['deals_found'] ?? 0,
             ]);
         }
 
@@ -436,7 +476,11 @@ class TelegramMtprotoController extends Controller
      */
     protected function syncChannelsInternal(TelegramAccount $account): int
     {
-        $res = $this->telethonService->fetchChannels();
+        $res = $this->telethonService->fetchChannels(
+            sessionString: $account->session_string,
+            apiId: $account->api_id,
+            apiHash: $account->api_hash
+        );
         $rawChannels = $res['channels'] ?? [];
         $count = 0;
 
