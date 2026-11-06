@@ -20,6 +20,18 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    <!-- MTProto Telethon Promo Banner -->
+                    <div class="alert alert-primary border-0 shadow-sm py-2 px-3 mb-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fab fa-telegram-plane mr-1 fa-lg"></i>
+                            <strong>New: Telegram MTProto Scraper (Telethon)</strong>
+                            <div class="small">Connect your personal Telegram account to monitor private channels, groups, and sync past history.</div>
+                        </div>
+                        <a href="{{ route('admin.telegram_mtproto.index') }}" class="btn btn-sm btn-white font-weight-bold shadow-sm bg-white text-primary text-nowrap ml-2">
+                            Open MTProto Scraper &rarr;
+                        </a>
+                    </div>
+
                     <!-- Recommended notice -->
                     <div class="alert alert-info border-0 shadow-sm py-2 px-3 mb-3">
                         <div class="d-flex align-items-center">

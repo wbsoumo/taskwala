@@ -1,0 +1,16 @@
+[Unit]
+Description=Taskwala Telegram MTProto Telethon Background Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/taskwala/python_service
+ExecStart=/var/www/taskwala/python_service/venv/bin/python3 /var/www/taskwala/python_service/server.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/www/taskwala/storage/logs/telethon_service.log
+StandardError=append:/var/www/taskwala/storage/logs/telethon_service.log
+
+[Install]
+WantedBy=multi-user.target

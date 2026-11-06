@@ -56,3 +56,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/tickets', [\App\Http\Controllers\Api\V1\MissingTicketController::class, 'store']);
     });
 });
+
+// 3. INTERNAL TELETHON MTPROTO WEBHOOK
+Route::post('/internal/telegram-webhook', [\App\Http\Controllers\Api\Internal\TelegramWebhookController::class, 'handle']);
+

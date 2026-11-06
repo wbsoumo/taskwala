@@ -174,6 +174,12 @@
                                     <p>Sync Logs</p>
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.telegram_mtproto.index') }}" class="nav-link {{ request()->is('admin/telegram-mtproto*') ? 'active' : '' }}">
+                                    <i class="fab fa-telegram-plane nav-icon text-primary"></i>
+                                    <p>MTProto Telethon Scraper</p>
+                                </a>
+                            </li>
                         </ul>
                     </li>
 
@@ -313,11 +319,25 @@
                         </ul>
                     </li>
 
-                    <li class="nav-item">
-                        <a href="{{ route('admin.settings.index') }}" class="nav-link {{ request()->routeIs('admin.settings.index') ? 'active' : '' }}">
+                    <li class="nav-item {{ request()->is('admin/settings*') || request()->is('admin/telegram-mtproto*') ? 'menu-open' : '' }}">
+                        <a href="#" class="nav-link {{ request()->is('admin/settings*') || request()->is('admin/telegram-mtproto*') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-cogs"></i>
-                            <p>Settings</p>
+                            <p>Settings <i class="right fas fa-angle-left"></i></p>
                         </a>
+                        <ul class="nav nav-treeview">
+                            <li class="nav-item">
+                                <a href="{{ route('admin.settings.index') }}" class="nav-link {{ request()->routeIs('admin.settings.index') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p>Platform Settings</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.telegram_mtproto.index') }}" class="nav-link {{ request()->is('admin/telegram-mtproto*') ? 'active' : '' }}">
+                                    <i class="fab fa-telegram-plane nav-icon text-primary"></i>
+                                    <p>Telegram Integration</p>
+                                </a>
+                            </li>
+                        </ul>
                     </li>
 
                 </ul>

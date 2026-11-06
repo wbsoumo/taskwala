@@ -28,4 +28,11 @@ Thumbs.db
 storage/app/firebase-credentials.json
 google-services*.json
 android_notification_icon.png
+python_service/venv/
+__pycache__/
+*.pyc
+*.session
+storage/app/public/telegram_media/*
+!storage/app/public/telegram_media/.gitignore
+
 

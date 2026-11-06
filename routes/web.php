@@ -84,6 +84,24 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/deals-logs', [\App\Http\Controllers\Admin\DealSettingController::class, 'logs'])->name('deals.logs');
         Route::post('/deals-logs/clear', [\App\Http\Controllers\Admin\DealSettingController::class, 'clearLogs'])->name('deals.logs.clear');
 
+        // Telegram MTProto Integration (Telethon)
+        Route::get('/telegram-mtproto', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'index'])->name('telegram_mtproto.index');
+        Route::post('/telegram-mtproto/send-code', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'sendCode'])->name('telegram_mtproto.send_code');
+        Route::post('/telegram-mtproto/verify-code', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'verifyCode'])->name('telegram_mtproto.verify_code');
+        Route::post('/telegram-mtproto/verify-2fa', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'verify2FA'])->name('telegram_mtproto.verify_2fa');
+        Route::post('/telegram-mtproto/disconnect', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'disconnect'])->name('telegram_mtproto.disconnect');
+        Route::post('/telegram-mtproto/channels/fetch', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'fetchChannels'])->name('telegram_mtproto.channels.fetch');
+        Route::post('/telegram-mtproto/channels/{id}/toggle', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'toggleChannelMonitoring'])->name('telegram_mtproto.channels.toggle');
+        Route::post('/telegram-mtproto/channels/bulk', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'bulkUpdateMonitoring'])->name('telegram_mtproto.channels.bulk');
+        Route::post('/telegram-mtproto/channels/{id}/sync-history', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'syncChannelHistory'])->name('telegram_mtproto.channels.sync_history');
+        Route::post('/telegram-mtproto/monitoring/start', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'startMonitoring'])->name('telegram_mtproto.monitoring.start');
+        Route::post('/telegram-mtproto/monitoring/stop', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'stopMonitoring'])->name('telegram_mtproto.monitoring.stop');
+        Route::get('/telegram-mtproto/messages', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'messages'])->name('telegram_mtproto.messages');
+        Route::get('/telegram-mtproto/live-status', [\App\Http\Controllers\Admin\TelegramMtprotoController::class, 'liveStatus'])->name('telegram_mtproto.live_status');
+        Route::get('/settings/telegram', function () {
+            return redirect()->route('admin.telegram_mtproto.index');
+        })->name('settings.telegram');
+
         // Missing Conversion Tickets
         Route::get('/tickets', [\App\Http\Controllers\Admin\MissingTicketController::class, 'index'])->name('tickets.index');
         Route::get('/tickets/{id}', [\App\Http\Controllers\Admin\MissingTicketController::class, 'show'])->name('tickets.show');
