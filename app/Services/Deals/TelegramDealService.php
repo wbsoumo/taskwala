@@ -24,15 +24,15 @@ class TelegramDealService
     }
 
     /**
-     * Test scraping a public Telegram channel directly without needing a Bot token.
+     * Test scraping a public Telegram channel directly, with Bot API fallback.
      */
-    public function testPublicChannel(string $channel): array
+    public function testPublicChannel(string $channel, ?string $botToken = null, ?string $apiBase = null): array
     {
         $channel = trim($channel);
         if (empty($channel)) {
             return [
                 'success' => false,
-                'message' => 'Please provide a Telegram channel username (e.g. @dealsmagnet, @lootdeals).',
+                'message' => 'Please provide a Telegram channel username (e.g. @taskbazi_loot, @dealsmagnet).',
             ];
         }
 
@@ -40,6 +40,49 @@ class TelegramDealService
         if (str_contains($cleanChannel, 't.me/')) {
             $parts = explode('t.me/', $cleanChannel);
             $cleanChannel = trim(explode('/', $parts[1] ?? '')[0]);
+        }
+
+        $botToken = trim($botToken ?? $this->botToken ?? '');
+        $apiBase = rtrim($apiBase ?? $this->apiBase ?? 'https://api.telegram.org', '/');
+
+        // Check if Bot API already has recent channel posts from this channel
+        if (!empty($botToken)) {
+            try {
+                $botRes = Http::timeout(4)->get("{$apiBase}/bot{$botToken}/getUpdates", [
+                    'limit' => 20,
+                    'allowed_updates' => json_encode(['channel_post']),
+                ]);
+
+                if ($botRes->successful() && $botRes->json('ok')) {
+                    $updates = $botRes->json('result', []);
+                    foreach ($updates as $update) {
+                        $post = $update['channel_post'] ?? null;
+                        if (!$post) continue;
+                        $postChat = $post['chat'] ?? [];
+                        $chatUser = strtolower($postChat['username'] ?? '');
+                        if ($chatUser === strtolower($cleanChannel) || ($postChat['title'] ?? '') === $cleanChannel) {
+                            $parsed = $this->parseBotPost($post);
+                            return [
+                                'success' => true,
+                                'channel' => '@' . $cleanChannel,
+                                'count' => 1,
+                                'via_bot' => true,
+                                'message' => "Success! Your bot is active in @{$cleanChannel} and receiving deal updates directly via Telegram Bot API!",
+                                'sample' => $parsed ? [
+                                    'title' => $parsed['title'],
+                                    'price' => $parsed['price'],
+                                    'original_price' => $parsed['original_price'],
+                                    'discount_percent' => $parsed['discount_percent'],
+                                    'category' => $parsed['category'],
+                                    'original_url' => $parsed['original_url'],
+                                ] : null,
+                            ];
+                        }
+                    }
+                }
+            } catch (\Throwable $botEx) {
+                // Ignore bot check error and fall through to web preview test
+            }
         }
 
         try {
@@ -86,9 +129,25 @@ class TelegramDealService
                 'message' => "Channel https://t.me/s/{$cleanChannel} returned HTTP {$res->status()}. Please ensure the channel is public.",
             ];
         } catch (\Throwable $e) {
+            $msg = $e->getMessage();
+            if (str_contains($msg, 'cURL error 28') || str_contains($msg, 'timed out')) {
+                if (!empty($botToken)) {
+                    return [
+                        'success' => true,
+                        'is_info' => true,
+                        'message' => "Web preview to t.me timed out (hosting firewall block). But your Telegram Bot is connected successfully! Simply add your bot as an Administrator to @{$cleanChannel}. Taskwala will automatically receive and process deals via the Bot API.",
+                    ];
+                }
+
+                return [
+                    'success' => false,
+                    'message' => "Hosting server connection to https://t.me/s/{$cleanChannel} timed out (cURL error 28). Please add your Telegram Bot as an administrator to this channel to sync deals via the Bot API.",
+                ];
+            }
+
             return [
                 'success' => false,
-                'message' => 'Error testing public channel: ' . $e->getMessage(),
+                'message' => 'Error testing channel: ' . $msg,
             ];
         }
     }

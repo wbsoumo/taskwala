@@ -353,6 +353,10 @@
         resultDiv.innerHTML = '<span class="text-info"><i class="fas fa-spinner fa-spin mr-1"></i> Testing live deal scraping from ' + firstChannel + '...</span>';
         btn.disabled = true;
 
+        const botToken = document.getElementById('botTokenInput') ? document.getElementById('botTokenInput').value : '';
+        const apiBaseInput = document.getElementById('telegramApiBase');
+        const apiBase = apiBaseInput ? apiBaseInput.value : '';
+
         fetch('{{ route("admin.deals.settings.test_channel") }}', {
             method: 'POST',
             headers: {
@@ -360,7 +364,11 @@
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ channel: firstChannel })
+            body: JSON.stringify({
+                channel: firstChannel,
+                bot_token: botToken,
+                api_base: apiBase
+            })
         })
         .then(res => res.json())
         .then(data => {
@@ -375,7 +383,9 @@
                         '<div class="text-muted small text-truncate">Link: ' + (data.sample.original_url || '') + '</div>' +
                         '</div>';
                 }
-                resultDiv.innerHTML = '<div class="alert alert-success py-2 px-3 small mb-0"><i class="fas fa-check-circle mr-1"></i> <strong>' + data.message + '</strong>' + sampleHtml + '</div>';
+                const alertClass = data.is_info ? 'alert-info' : 'alert-success';
+                const iconClass = data.is_info ? 'fa-info-circle' : 'fa-check-circle';
+                resultDiv.innerHTML = '<div class="alert ' + alertClass + ' py-2 px-3 small mb-0"><i class="fas ' + iconClass + ' mr-1"></i> <strong>' + data.message + '</strong>' + sampleHtml + '</div>';
             } else {
                 resultDiv.innerHTML = '<div class="alert alert-warning py-2 px-3 small mb-0"><i class="fas fa-exclamation-triangle mr-1"></i> ' + data.message + '</div>';
             }

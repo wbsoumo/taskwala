@@ -100,13 +100,16 @@ class DealSettingController extends Controller
     public function testChannel(Request $request, TelegramDealService $telegramService)
     {
         $channel = $request->input('channel');
+        $botToken = $request->input('bot_token') ?: Setting::get('deals_telegram_bot_token');
+        $apiBase = $request->input('api_base') ?: Setting::get('deals_telegram_api_base', 'https://api.telegram.org');
+
         if (empty($channel)) {
             $configured = Setting::get('deals_telegram_channels', '@dealsmagnet');
             $parts = array_filter(array_map('trim', explode(',', $configured)));
             $channel = reset($parts) ?: '@dealsmagnet';
         }
 
-        $result = $telegramService->testPublicChannel($channel);
+        $result = $telegramService->testPublicChannel($channel, $botToken, $apiBase);
 
         return response()->json($result);
     }
