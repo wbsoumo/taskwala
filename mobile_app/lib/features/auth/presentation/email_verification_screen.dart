@@ -40,11 +40,6 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
   void initState() {
     super.initState();
     _startResendTimer();
-
-    // Auto-fill debug code if available
-    if (widget.debugCode != null && widget.debugCode!.length == 6) {
-      _fillOtp(widget.debugCode!);
-    }
   }
 
   @override
@@ -76,15 +71,6 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
     });
   }
 
-  void _fillOtp(String code) {
-    final clean = code.replaceAll(RegExp(r'\D'), '');
-    for (int i = 0; i < 6 && i < clean.length; i++) {
-      _controllers[i].text = clean[i];
-    }
-    if (clean.length >= 6) {
-      _focusNodes[5].requestFocus();
-    }
-  }
 
   String _getOtp() {
     return _controllers.map((c) => c.text.trim()).join();
@@ -175,10 +161,6 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
 
     if (res['success'] == true) {
       _startResendTimer();
-      final newDebug = res['debug_code']?.toString();
-      if (newDebug != null && newDebug.length == 6) {
-        _fillOtp(newDebug);
-      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.surface,
@@ -320,39 +302,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
 
                 const SizedBox(height: 16),
 
-                // Quick Testing Autofill Chip
-                if (widget.debugCode != null && widget.debugCode!.isNotEmpty)
-                  Center(
-                    child: GestureDetector(
-                      onTap: () {
-                        _fillOtp(widget.debugCode!);
-                        HapticFeedback.lightImpact();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.flash_on_rounded, size: 16, color: AppColors.primary),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Code: ${widget.debugCode} (Tap to autofill)',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 200.ms),
+
 
                 const SizedBox(height: 24),
 

@@ -52,14 +52,19 @@ class AuthController extends Controller
 
             OtpMailService::sendRegistrationVerificationOtp($user->email, $user->name, $otp);
 
-            return response()->json([
+            $responseData = [
                 'success' => false,
                 'requires_verification' => true,
                 'message' => 'Please verify your email address to log in. We have sent a verification code to ' . $this->maskEmail($user->email),
                 'email' => $user->email,
                 'email_hint' => $this->maskEmail($user->email),
-                'debug_code' => $otp,
-            ], 403);
+            ];
+
+            if (app()->environment('testing')) {
+                $responseData['debug_code'] = $otp;
+            }
+
+            return response()->json($responseData, 403);
         }
 
         $token = $user->createToken('mobile_app_token')->plainTextToken;
@@ -117,14 +122,19 @@ class AuthController extends Controller
 
         OtpMailService::sendRegistrationVerificationOtp($user->email, $user->name, $otp);
 
-        return response()->json([
+        $responseData = [
             'success' => true,
             'requires_verification' => true,
             'message' => 'Registration successful! Please verify your email with the 6-digit code sent to ' . $this->maskEmail($user->email),
             'email' => $user->email,
             'email_hint' => $this->maskEmail($user->email),
-            'debug_code' => $otp,
-        ], 201);
+        ];
+
+        if (app()->environment('testing')) {
+            $responseData['debug_code'] = $otp;
+        }
+
+        return response()->json($responseData, 201);
     }
 
     public function verifyEmail(Request $request): JsonResponse
@@ -225,13 +235,18 @@ class AuthController extends Controller
 
         OtpMailService::sendRegistrationVerificationOtp($user->email, $user->name, $otp);
 
-        return response()->json([
+        $responseData = [
             'success' => true,
             'message' => 'A fresh verification code has been sent to your email (' . $this->maskEmail($user->email) . ').',
             'email' => $user->email,
             'email_hint' => $this->maskEmail($user->email),
-            'debug_code' => $otp,
-        ]);
+        ];
+
+        if (app()->environment('testing')) {
+            $responseData['debug_code'] = $otp;
+        }
+
+        return response()->json($responseData);
     }
 
     public function profile(Request $request): JsonResponse
@@ -305,14 +320,19 @@ class AuthController extends Controller
         // Always send OTP code strictly to the user's registered email address
         OtpMailService::sendPasswordResetOtp($user->email, $user->name, $otp);
 
-        return response()->json([
+        $responseData = [
             'success' => true,
             'message' => 'A 6-digit verification code has been sent to your registered email (' . $this->maskEmail($user->email) . ').',
             'login' => $login,
             'email_hint' => $this->maskEmail($user->email),
             'mobile_hint' => $this->maskMobile($user->mobile_number),
-            'debug_code' => $otp,
-        ]);
+        ];
+
+        if (app()->environment('testing')) {
+            $responseData['debug_code'] = $otp;
+        }
+
+        return response()->json($responseData);
     }
 
     public function verifyOtp(Request $request): JsonResponse

@@ -8,7 +8,6 @@ import 'package:dio/dio.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
-import '../../../shared/widgets/bouncing_card.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -35,7 +34,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   // Step 2 state
   int _currentStep = 1;
   String? _emailHint;
-  String? _debugCode;
 
   // Resend Timer
   Timer? _resendTimer;
@@ -86,14 +84,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         setState(() {
           _currentStep = 2;
           _emailHint = data['email_hint']?.toString();
-          _debugCode = data['debug_code']?.toString();
           _isSubmitting = false;
           _errorMessage = null;
         });
-
-        if (_debugCode != null && _debugCode!.isNotEmpty) {
-          _otpController.text = _debugCode!;
-        }
 
         _startResendTimer();
       } else {
@@ -568,40 +561,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 18),
 
-          // Dev Code Quick Chip
-          if (_debugCode != null && _debugCode!.isNotEmpty) ...[
-            BouncingCard(
-              onTap: () {
-                _otpController.text = _debugCode!;
-                setState(() {});
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.mintBg,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.mint.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.auto_awesome_rounded, color: AppColors.mint, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Demo Code: $_debugCode (Tap to auto-fill)',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.mint,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+
 
           // OTP Input Field
           Text(
