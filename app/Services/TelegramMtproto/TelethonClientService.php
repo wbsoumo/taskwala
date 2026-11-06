@@ -414,6 +414,10 @@ class TelethonClientService
             config('services.telegram.python_path'),
             env('TELEGRAM_PYTHON_PATH'),
             base_path('python_service/venv/bin/python3'),
+            '/opt/alt/python310/bin/python3',
+            '/opt/alt/python311/bin/python3',
+            '/opt/alt/python39/bin/python3',
+            '/opt/alt/python38/bin/python3',
             '/usr/bin/python3',
             '/usr/local/bin/python3',
             'python3',
@@ -424,8 +428,8 @@ class TelethonClientService
             if (str_starts_with($bin, '/') && !file_exists($bin)) {
                 continue;
             }
-            $out = $this->execProc([$bin, '--version'], 5);
-            if ($out['exit_code'] === 0) {
+            $out = $this->execProc([$bin, '-c', 'import telethon; print("ok")'], 5);
+            if ($out['exit_code'] === 0 && str_contains($out['stdout'], 'ok')) {
                 $this->cachedPythonBin = $bin;
                 return $bin;
             }
