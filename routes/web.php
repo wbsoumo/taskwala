@@ -193,6 +193,9 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
             $output .= "\n" . \Illuminate\Support\Facades\Artisan::output();
         }
 
+        $disabledFunctions = explode(',', ini_get('disable_functions'));
+        $disabledFunctions = array_map('trim', $disabledFunctions);
+
         return response()->json([
             'success' => true,
             'message' => 'Executed successfully.',
@@ -200,6 +203,16 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
             'migration_output' => $output,
             'optimize_output' => $optimizeOutput,
             'deals_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deals'),
+            'cpanel_env' => [
+                'php_version' => PHP_VERSION,
+                'user' => get_current_user(),
+                'base_path' => base_path(),
+                'disabled_functions' => $disabledFunctions,
+                'exec_enabled' => function_exists('exec') && !in_array('exec', $disabledFunctions),
+                'shell_exec_enabled' => function_exists('shell_exec') && !in_array('shell_exec', $disabledFunctions),
+                'proc_open_enabled' => function_exists('proc_open') && !in_array('proc_open', $disabledFunctions),
+                'system_enabled' => function_exists('system') && !in_array('system', $disabledFunctions),
+            ],
         ]);
     } catch (\Throwable $e) {
         return response()->json([
