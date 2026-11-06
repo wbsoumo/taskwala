@@ -59,6 +59,11 @@
                 <a href="{{ route('user.dashboard') }}" class="nav-link font-weight-bold"><i class="fas fa-home text-primary mr-1"></i> Dashboard</a>
             </li>
             <li class="nav-item d-none d-sm-inline-block">
+                <a href="{{ route('user.deals.index') }}" class="nav-link font-weight-bold {{ request()->routeIs('user.deals*') ? 'text-primary' : '' }}">
+                    <i class="fas fa-bolt text-warning mr-1"></i> Deals <span class="badge badge-danger badge-pill ml-1">HOT</span>
+                </a>
+            </li>
+            <li class="nav-item d-none d-sm-inline-block">
                 <a href="{{ route('user.campaigns.index') }}" class="nav-link"><i class="fas fa-bullhorn text-info mr-1"></i> Campaigns</a>
             </li>
             <li class="nav-item d-none d-sm-inline-block">
@@ -83,14 +88,20 @@
                 </a>
                 <div class="dropdown-menu dropdown-menu-right shadow border-0 mt-2">
                     <div class="dropdown-header text-uppercase font-weight-bold">Account Options</div>
+                    <a class="dropdown-item" href="{{ route('user.deals.index') }}">
+                        <i class="fas fa-bolt mr-2 text-warning"></i> Latest Deals & Offers
+                    </a>
+                    <a class="dropdown-item" href="{{ route('user.reports.conversions') }}">
+                        <i class="fas fa-chart-line mr-2 text-success"></i> Reports & Analytics
+                    </a>
                     <a class="dropdown-item" href="{{ route('user.profile.index') }}">
                         <i class="fas fa-user-edit mr-2 text-primary"></i> Profile & Settings
                     </a>
                     <a class="dropdown-item" href="{{ route('user.upi.index') }}">
-                        <i class="fas fa-university mr-2 text-success"></i> UPI / Payout Details
+                        <i class="fas fa-university mr-2 text-info"></i> UPI / Payout Details
                     </a>
                     <a class="dropdown-item" href="{{ route('user.wallet.index') }}">
-                        <i class="fas fa-wallet mr-2 text-info"></i> My Wallet
+                        <i class="fas fa-wallet mr-2 text-secondary"></i> My Wallet
                     </a>
                     <div class="dropdown-divider"></div>
                     <form action="{{ route('user.logout') }}" method="POST">
@@ -133,6 +144,15 @@
                         <a href="{{ route('user.dashboard') }}" class="nav-link {{ request()->routeIs('user.dashboard') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-tachometer-alt"></i>
                             <p>Dashboard</p>
+                        </a>
+                    </li>
+
+                    <li class="nav-header">DEALS & OFFERS</li>
+
+                    <li class="nav-item">
+                        <a href="{{ route('user.deals.index') }}" class="nav-link {{ request()->routeIs('user.deals*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-tags text-warning"></i>
+                            <p>Browse Deals <span class="badge badge-danger right">HOT</span></p>
                         </a>
                     </li>
 

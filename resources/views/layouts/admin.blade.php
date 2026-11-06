@@ -142,6 +142,41 @@
                         </a>
                     </li>
 
+                    <li class="nav-header">DEALS & AGGREGATION</li>
+
+                    <li class="nav-item {{ request()->is('admin/deals*') ? 'menu-open' : '' }}">
+                        <a href="#" class="nav-link {{ request()->is('admin/deals*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-tags text-warning"></i>
+                            <p>Deals Management <i class="right fas fa-angle-left"></i></p>
+                        </a>
+                        <ul class="nav nav-treeview">
+                            <li class="nav-item">
+                                <a href="{{ route('admin.deals.index') }}" class="nav-link {{ request()->routeIs('admin.deals.index') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-primary"></i>
+                                    <p>Deals Dashboard</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.deals.create') }}" class="nav-link {{ request()->routeIs('admin.deals.create') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-success"></i>
+                                    <p>Add New Deal</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.deals.settings') }}" class="nav-link {{ request()->routeIs('admin.deals.settings') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-info"></i>
+                                    <p>Deals Settings</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.deals.logs') }}" class="nav-link {{ request()->routeIs('admin.deals.logs') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-warning"></i>
+                                    <p>Sync Logs</p>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
                     <li class="nav-header">POSTBACKS & INTEGRATION</li>
 
                     <li class="nav-item {{ request()->is('admin/postbacks*') ? 'menu-open' : '' }}">

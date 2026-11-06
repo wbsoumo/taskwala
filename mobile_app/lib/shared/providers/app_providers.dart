@@ -226,3 +226,24 @@ final missingTicketsProvider = FutureProvider<List<MissingConversionTicket>>((re
   return [];
 });
 
+final dealsProvider = FutureProvider<List<DealItem>>((ref) async {
+  final api = ref.watch(apiClientProvider);
+  try {
+    final response = await api.get('/deals');
+    final data = response.data;
+    final rawList = (data is Map && data['data'] != null)
+        ? data['data']
+        : (data is List ? data : []);
+    if (rawList is List) {
+      return rawList
+          .whereType<Map>()
+          .map((d) => DealItem.fromJson(Map<String, dynamic>.from(d)))
+          .toList();
+    }
+  } catch (e) {
+    debugPrint('Error fetching deals: $e');
+  }
+  return [];
+});
+
+

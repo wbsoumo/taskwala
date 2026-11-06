@@ -175,6 +175,16 @@ class ProfileScreen extends ConsumerWidget {
 
             _buildOptionTile(
               context,
+              icon: Icons.bar_chart_rounded,
+              fgColor: AppColors.primary,
+              bgColor: AppColors.primaryLight,
+              title: 'Reports & Analytics',
+              subtitle: 'Clicks, conversions, and campaign earnings report',
+              onTap: () => context.push('/reports'),
+            ).animate().fadeIn(delay: 135.ms, duration: 300.ms),
+
+            _buildOptionTile(
+              context,
               icon: Icons.stars_rounded,
               fgColor: AppColors.lavender,
               bgColor: AppColors.lavenderBg,

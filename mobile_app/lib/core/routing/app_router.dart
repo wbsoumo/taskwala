@@ -22,6 +22,7 @@ import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/support/presentation/support_screen.dart';
 import '../../features/reports/presentation/missing_ticket_screen.dart';
+import '../../features/deals/presentation/deals_screen.dart';
 
 /// Helper for silky smooth slide & fade page transitions
 CustomTransitionPage<T> _buildSmoothPage<T>({
@@ -106,6 +107,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               context: context,
               state: state,
               child: const MyLinksScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/deals',
+            pageBuilder: (context, state) => _buildSmoothPage(
+              context: context,
+              state: state,
+              child: const DealsScreen(),
             ),
           ),
           GoRoute(

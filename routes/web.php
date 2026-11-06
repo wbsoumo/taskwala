@@ -64,6 +64,25 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('campaigns/{campaign}/collaterals', [AdminCampaignController::class, 'uploadCollateral'])->name('campaigns.collaterals.upload');
         Route::delete('campaigns/collaterals/{id}', [AdminCampaignController::class, 'deleteCollateral'])->name('campaigns.collaterals.delete');
 
+        // Deals Management & Aggregation
+        Route::get('/deals', [\App\Http\Controllers\Admin\DealController::class, 'index'])->name('deals.index');
+        Route::get('/deals/create', [\App\Http\Controllers\Admin\DealController::class, 'create'])->name('deals.create');
+        Route::post('/deals', [\App\Http\Controllers\Admin\DealController::class, 'store'])->name('deals.store');
+        Route::get('/deals/{deal}/edit', [\App\Http\Controllers\Admin\DealController::class, 'edit'])->name('deals.edit');
+        Route::put('/deals/{deal}', [\App\Http\Controllers\Admin\DealController::class, 'update'])->name('deals.update');
+        Route::delete('/deals/{deal}', [\App\Http\Controllers\Admin\DealController::class, 'destroy'])->name('deals.destroy');
+        Route::post('/deals/{deal}/toggle-status', [\App\Http\Controllers\Admin\DealController::class, 'toggleStatus'])->name('deals.toggle_status');
+        Route::post('/deals/{deal}/retry-conversion', [\App\Http\Controllers\Admin\DealController::class, 'retryConversion'])->name('deals.retry_conversion');
+
+        // Deals Settings & Synchronization
+        Route::get('/deals-settings', [\App\Http\Controllers\Admin\DealSettingController::class, 'settings'])->name('deals.settings');
+        Route::post('/deals-settings', [\App\Http\Controllers\Admin\DealSettingController::class, 'updateSettings'])->name('deals.settings.update');
+        Route::post('/deals-settings/test-telegram', [\App\Http\Controllers\Admin\DealSettingController::class, 'testTelegram'])->name('deals.settings.test_telegram');
+        Route::post('/deals-settings/test-earnkaro', [\App\Http\Controllers\Admin\DealSettingController::class, 'testEarnkaro'])->name('deals.settings.test_earnkaro');
+        Route::post('/deals-settings/sync-now', [\App\Http\Controllers\Admin\DealSettingController::class, 'syncNow'])->name('deals.settings.sync_now');
+        Route::get('/deals-logs', [\App\Http\Controllers\Admin\DealSettingController::class, 'logs'])->name('deals.logs');
+        Route::post('/deals-logs/clear', [\App\Http\Controllers\Admin\DealSettingController::class, 'clearLogs'])->name('deals.logs.clear');
+
         // Missing Conversion Tickets
         Route::get('/tickets', [\App\Http\Controllers\Admin\MissingTicketController::class, 'index'])->name('tickets.index');
         Route::get('/tickets/{id}', [\App\Http\Controllers\Admin\MissingTicketController::class, 'show'])->name('tickets.show');
@@ -186,6 +205,11 @@ Route::middleware(['web'])->group(function () {
 
     Route::middleware(['auth.user'])->group(function () {
         Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
+
+        // Deals Aggregation & Browsing
+        Route::get('/deals', [\App\Http\Controllers\User\DealController::class, 'index'])->name('user.deals.index');
+        Route::get('/deals/{public_id}', [\App\Http\Controllers\User\DealController::class, 'show'])->name('user.deals.show');
+        Route::get('/deals/{public_id}/out', [\App\Http\Controllers\User\DealController::class, 'redirect'])->name('user.deals.redirect');
 
         // User Campaigns
         Route::get('/campaigns', [UserCampaignController::class, 'index'])->name('user.campaigns.index');

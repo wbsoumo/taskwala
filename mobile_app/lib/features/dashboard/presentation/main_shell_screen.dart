@@ -13,7 +13,7 @@ class MainShellScreen extends StatelessWidget {
     final String location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/campaigns')) return 1;
     if (location.startsWith('/links')) return 2;
-    if (location.startsWith('/reports')) return 3;
+    if (location.startsWith('/deals')) return 3;
     if (location.startsWith('/profile')) return 4;
     return 0;
   }
@@ -31,7 +31,7 @@ class MainShellScreen extends StatelessWidget {
         context.go('/links');
         break;
       case 3:
-        context.go('/reports');
+        context.go('/deals');
         break;
       case 4:
         context.go('/profile');
@@ -162,9 +162,9 @@ class MainShellScreen extends StatelessWidget {
         label: 'My Links',
       ),
       _NavItem(
-        icon: Icons.bar_chart_outlined,
-        activeIcon: Icons.bar_chart_rounded,
-        label: 'Reports',
+        icon: Icons.local_offer_outlined,
+        activeIcon: Icons.local_offer_rounded,
+        label: 'Deals',
       ),
       _NavItem(
         icon: Icons.person_outline_rounded,

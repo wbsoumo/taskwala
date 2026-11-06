@@ -30,6 +30,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/links', [LinkController::class, 'index']);
         Route::post('/links/generate', [LinkController::class, 'generate']);
 
+        // Deals Aggregation Endpoints
+        Route::get('/deals', [\App\Http\Controllers\Api\V1\DealController::class, 'index']);
+        Route::get('/deals/{id}', [\App\Http\Controllers\Api\V1\DealController::class, 'show']);
+        Route::post('/deals/{id}/click', [\App\Http\Controllers\Api\V1\DealController::class, 'recordClick']);
+
         Route::get('/wallet', [WalletController::class, 'index']);
         Route::post('/wallet/upi', [WalletController::class, 'updateUpi']);
         Route::post('/wallet/payout', [WalletController::class, 'requestPayout']);

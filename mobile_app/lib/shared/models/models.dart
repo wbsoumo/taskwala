@@ -556,3 +556,72 @@ class MissingConversionTicket {
   }
 }
 
+class DealItem {
+  final int id;
+  final String publicId;
+  final String title;
+  final String? description;
+  final String originalUrl;
+  final String? affiliateUrl;
+  final String? imageUrl;
+  final double? price;
+  final double? originalPrice;
+  final int? discountPercent;
+  final String? commissionRate;
+  final String category;
+  final String sourceChannel;
+  final int clicksCount;
+  final String? postedAt;
+
+  DealItem({
+    required this.id,
+    required this.publicId,
+    required this.title,
+    this.description,
+    required this.originalUrl,
+    this.affiliateUrl,
+    this.imageUrl,
+    this.price,
+    this.originalPrice,
+    this.discountPercent,
+    this.commissionRate,
+    this.category = 'General',
+    this.sourceChannel = 'Telegram',
+    this.clicksCount = 0,
+    this.postedAt,
+  });
+
+  String get effectiveUrl => (affiliateUrl != null && affiliateUrl!.isNotEmpty)
+      ? affiliateUrl!
+      : originalUrl;
+
+  int get computedDiscount {
+    if (discountPercent != null && discountPercent! > 0) return discountPercent!;
+    if (price != null && originalPrice != null && originalPrice! > price!) {
+      return (((originalPrice! - price!) / originalPrice!) * 100).round();
+    }
+    return 0;
+  }
+
+  factory DealItem.fromJson(Map<String, dynamic> json) {
+    return DealItem(
+      id: _parseInt(json['id']),
+      publicId: json['public_id']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'Deal Offer',
+      description: json['description']?.toString(),
+      originalUrl: json['original_url']?.toString() ?? '',
+      affiliateUrl: json['affiliate_url']?.toString(),
+      imageUrl: json['image_url']?.toString(),
+      price: json['price'] != null ? _parseDouble(json['price']) : null,
+      originalPrice: json['original_price'] != null ? _parseDouble(json['original_price']) : null,
+      discountPercent: json['discount_percent'] != null ? _parseInt(json['discount_percent']) : null,
+      commissionRate: json['commission_rate']?.toString() ?? 'Earn Profit',
+      category: json['category']?.toString() ?? 'General',
+      sourceChannel: json['source_channel']?.toString() ?? 'Telegram',
+      clicksCount: _parseInt(json['clicks_count']),
+      postedAt: json['posted_at']?.toString(),
+    );
+  }
+}
+
+
