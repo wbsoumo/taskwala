@@ -484,8 +484,30 @@ class _EarnTaskBottomSheetState extends ConsumerState<_EarnTaskBottomSheet> {
       }
 
       final uri = Uri.parse(launchUrlStr);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      bool launched = false;
+      try {
+        launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        launched = false;
+      }
+
+      if (!launched) {
+        try {
+          launched = await launchUrl(uri, mode: LaunchMode.platformDefault);
+        } catch (_) {
+          launched = false;
+        }
+      }
+
+      if (!launched) {
+        try {
+          launched = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+        } catch (_) {
+          launched = false;
+        }
+      }
+
+      if (launched) {
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -501,7 +523,7 @@ class _EarnTaskBottomSheetState extends ConsumerState<_EarnTaskBottomSheet> {
           );
         }
       } else {
-        throw 'Could not launch $launchUrlStr';
+        throw 'Unable to open browser on this device. URL: $launchUrlStr';
       }
     } catch (e) {
       if (mounted) {
