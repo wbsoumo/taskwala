@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "189552712857",
+    "project_id": "taskwala-a9ab4",
+    "storage_bucket": "taskwala-a9ab4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:189552712857:android:16812850edb99ff3866c08",
+        "android_client_info": {
+          "package_name": "com.taskwala.app.mobile_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAk03soGhQqAyia0TvLkktGMfH1WT7-doc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

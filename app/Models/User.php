@@ -20,6 +20,8 @@ class User extends Authenticatable
         'email_verified_at',
         'password',
         'status',
+        'fcm_token',
+        'fcm_token_updated_at',
         'upi_id',
         'upi_holder_name',
         'notes',
@@ -39,6 +41,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'fcm_token_updated_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -110,6 +113,11 @@ class User extends Authenticatable
     public function conversions()
     {
         return $this->hasMany(Conversion::class);
+    }
+
+    public function notifications()
+    {
+        return $this->hasMany(UserNotification::class);
     }
 
     public function isActive(): bool

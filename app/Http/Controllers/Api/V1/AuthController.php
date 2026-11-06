@@ -69,6 +69,13 @@ class AuthController extends Controller
 
         $token = $user->createToken('mobile_app_token')->plainTextToken;
 
+        if ($request->filled('fcm_token')) {
+            $user->update([
+                'fcm_token' => $request->fcm_token,
+                'fcm_token_updated_at' => now(),
+            ]);
+        }
+
         return response()->json([
             'message' => 'Login successful.',
             'token' => $token,
@@ -179,6 +186,13 @@ class AuthController extends Controller
         DB::table('password_reset_tokens')->where('email', $user->email)->delete();
 
         $token = $user->createToken('mobile_app_token')->plainTextToken;
+
+        if ($request->filled('fcm_token')) {
+            $user->update([
+                'fcm_token' => $request->fcm_token,
+                'fcm_token_updated_at' => now(),
+            ]);
+        }
 
         return response()->json([
             'success' => true,
@@ -444,6 +458,24 @@ class AuthController extends Controller
                 'upi_holder_name' => $user->upi_holder_name,
                 'status' => $user->status,
             ],
+        ]);
+    }
+
+    public function updateFcmToken(Request $request): JsonResponse
+    {
+        $request->validate([
+            'fcm_token' => ['required', 'string'],
+        ]);
+
+        $user = $request->user();
+        $user->update([
+            'fcm_token' => $request->fcm_token,
+            'fcm_token_updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'FCM device token registered successfully.',
         ]);
     }
 

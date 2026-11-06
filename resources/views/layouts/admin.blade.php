@@ -243,6 +243,35 @@
                             <p>Login Logs</p>
                         </a>
                     </li>
+                    <li class="nav-header">APP ENGAGEMENT & PUSH</li>
+
+                    <li class="nav-item {{ request()->is('admin/notifications*') ? 'menu-open' : '' }}">
+                        <a href="#" class="nav-link {{ request()->is('admin/notifications*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-bell text-primary"></i>
+                            <p>Push Notifications <i class="right fas fa-angle-left"></i></p>
+                        </a>
+                        <ul class="nav nav-treeview">
+                            <li class="nav-item">
+                                <a href="{{ route('admin.notifications.index') }}" class="nav-link {{ request()->routeIs('admin.notifications.index') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-info"></i>
+                                    <p>Sent Notifications</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.notifications.create') }}" class="nav-link {{ request()->routeIs('admin.notifications.create') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-success"></i>
+                                    <p>Send Notification</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.notifications.users') }}" class="nav-link {{ request()->routeIs('admin.notifications.users') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-warning"></i>
+                                    <p>Registered App Users</p>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
                     <li class="nav-item">
                         <a href="{{ route('admin.settings.index') }}" class="nav-link {{ request()->routeIs('admin.settings.index') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-cogs"></i>

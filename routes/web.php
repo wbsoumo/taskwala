@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\Auth\LoginController as AdminLoginController;
 use App\Http\Controllers\Admin\CampaignAllocationController;
+use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\CampaignController as AdminCampaignController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\FinanceController as AdminFinanceController;
@@ -98,6 +99,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Security Logs
         Route::get('/security/audit-logs', [AdminSecurityController::class, 'auditLogs'])->name('security.audit_logs');
         Route::get('/security/login-logs', [AdminSecurityController::class, 'loginLogs'])->name('security.login_logs');
+
+        // App Push Notifications & Engagement
+        Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications/create', [AdminNotificationController::class, 'create'])->name('notifications.create');
+        Route::post('/notifications', [AdminNotificationController::class, 'store'])->name('notifications.store');
+        Route::get('/notifications/users', [AdminNotificationController::class, 'registeredUsers'])->name('notifications.users');
+        Route::get('/notifications/{id}', [AdminNotificationController::class, 'show'])->name('notifications.show');
+        Route::post('/notifications/user-notification/{id}/toggle-read', [AdminNotificationController::class, 'toggleUserReadStatus'])->name('notifications.toggle_read');
 
         // Settings
         Route::get('/settings', [AdminSettingController::class, 'index'])->name('settings.index');

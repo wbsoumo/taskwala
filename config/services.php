@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID', 'taskwala-a9ab4'),
+        'credentials_file' => env('FIREBASE_CREDENTIALS_FILE', storage_path('app/firebase-credentials.json')),
+        'credentials_json' => env('FIREBASE_CREDENTIALS_JSON'),
+    ],
+
 ];

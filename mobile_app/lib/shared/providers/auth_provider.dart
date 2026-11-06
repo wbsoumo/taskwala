@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage_service.dart';
+import '../../core/notifications/notification_service.dart';
 import '../models/models.dart';
 
 class AuthResult {
@@ -62,6 +63,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (token != null) {
       _apiClient.setAuthToken(token);
       await fetchProfile();
+      final fcm = NotificationService().currentFcmToken;
+      if (fcm != null && fcm.isNotEmpty) {
+        NotificationService().syncTokenWithBackend(fcm);
+      }
     } else {
       state = state.copyWith(isLoading: false, isAuthenticated: false);
     }
@@ -70,9 +75,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<AuthResult> login(String login, String password) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
+      final fcmToken = NotificationService().currentFcmToken;
       final response = await _apiClient.post('/auth/login', data: {
         'login': login,
         'password': password,
+        if (fcmToken != null && fcmToken.isNotEmpty) 'fcm_token': fcmToken,
       });
 
       final data = response.data;
@@ -87,6 +94,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           isAuthenticated: true,
           isLoading: false,
         );
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          NotificationService().syncTokenWithBackend(fcmToken);
+        }
         return const AuthResult(success: true);
       } else {
         state = state.copyWith(
@@ -202,9 +212,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
+      final fcmToken = NotificationService().currentFcmToken;
       final response = await _apiClient.post('/auth/verify-email', data: {
         'email': email,
         'otp': otp,
+        if (fcmToken != null && fcmToken.isNotEmpty) 'fcm_token': fcmToken,
       });
 
       final data = response.data;
@@ -219,6 +231,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           isAuthenticated: true,
           isLoading: false,
         );
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          NotificationService().syncTokenWithBackend(fcmToken);
+        }
         return AuthResult(success: true, message: data['message']);
       } else {
         final msg = data?['message'] ?? 'Verification failed';

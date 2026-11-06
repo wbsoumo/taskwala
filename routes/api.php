@@ -40,6 +40,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('/referrals/dashboard', [\App\Http\Controllers\Api\V1\ReferralController::class, 'dashboard']);
         Route::get('/referrals/team', [\App\Http\Controllers\Api\V1\ReferralController::class, 'team']);
-        Route::get('/referrals/earnings', [\App\Http\Controllers\Api\V1\ReferralController::class, 'earnings']);
+        Route::post('/user/fcm-token', [AuthController::class, 'updateFcmToken']);
+
+        Route::get('/notifications', [\App\Http\Controllers\Api\V1\NotificationController::class, 'index']);
+        Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAsRead']);
+        Route::post('/notifications/{id}/unread', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAsUnread']);
+        Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAllAsRead']);
     });
 });
