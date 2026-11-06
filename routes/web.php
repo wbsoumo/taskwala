@@ -176,8 +176,8 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
     }
     try {
         $pullOutput = '';
-        if ($request->boolean('pull')) {
-            $cmd = 'git pull origin main 2>&1';
+        if ($request->boolean('pull') || $request->boolean('reset')) {
+            $cmd = $request->boolean('reset') ? 'git fetch origin main && git reset --hard origin/main 2>&1' : 'git pull origin main 2>&1';
             $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
             $proc = @proc_open($cmd, $descriptors, $pipes, base_path());
             if (is_resource($proc)) {
@@ -223,6 +223,7 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
         };
 
         $pyBin = file_exists('/opt/alt/python310/bin/python3') ? '/opt/alt/python310/bin/python3' : 'python3';
+        $pythonDiagnostics['git_commit'] = $runCmd('git log -1 --oneline');
         $pythonDiagnostics['py_bin'] = $pyBin;
         $pythonDiagnostics['telethon_cli_status'] = $runCmd($pyBin . ' ' . base_path('python_service/telethon_cli.py check-status'));
         $pythonDiagnostics['socket_test_dc5_443'] = $runCmd($pyBin . ' -c "import socket; s = socket.socket(); s.settimeout(5); s.connect((\'91.108.56.178\', 443)); print(\'connected\')"');
