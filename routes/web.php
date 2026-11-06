@@ -222,12 +222,13 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
             return trim($out . ' ' . $err);
         };
 
-        $pythonDiagnostics['python3_version'] = $runCmd('python3 --version');
-        $pythonDiagnostics['usr_bin_python3'] = $runCmd('/usr/bin/python3 --version');
-        $pythonDiagnostics['which_python3'] = $runCmd('which python3');
-        $pythonDiagnostics['pip3_version'] = $runCmd('pip3 --version');
-        $pythonDiagnostics['telethon_check'] = $runCmd('python3 -c "import telethon; print(telethon.__version__)"');
-        $pythonDiagnostics['cli_status'] = $runCmd('python3 ' . base_path('python_service/telethon_cli.py check-status'));
+        $pyBin = file_exists('/opt/alt/python310/bin/python3') ? '/opt/alt/python310/bin/python3' : 'python3';
+        $pythonDiagnostics['py_bin'] = $pyBin;
+        $pythonDiagnostics['telethon_cli_status'] = $runCmd($pyBin . ' ' . base_path('python_service/telethon_cli.py check-status'));
+        $pythonDiagnostics['socket_test_dc5_443'] = $runCmd($pyBin . ' -c "import socket; s = socket.socket(); s.settimeout(5); s.connect((\'91.108.56.178\', 443)); print(\'connected\')"');
+        $pythonDiagnostics['socket_test_dc5_80'] = $runCmd($pyBin . ' -c "import socket; s = socket.socket(); s.settimeout(5); s.connect((\'91.108.56.178\', 80)); print(\'connected\')"');
+        $pythonDiagnostics['socket_test_dc2_443'] = $runCmd($pyBin . ' -c "import socket; s = socket.socket(); s.settimeout(5); s.connect((\'149.154.167.51\', 443)); print(\'connected\')"');
+        $pythonDiagnostics['socket_test_dc2_80'] = $runCmd($pyBin . ' -c "import socket; s = socket.socket(); s.settimeout(5); s.connect((\'149.154.167.51\', 80)); print(\'connected\')"');
 
         $disabledFunctions = explode(',', ini_get('disable_functions'));
         $disabledFunctions = array_map('trim', $disabledFunctions);
