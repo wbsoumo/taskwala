@@ -155,8 +155,16 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
         abort(403, 'Unauthorized');
     }
     try {
+        $pullOutput = '';
+        if ($request->boolean('pull')) {
+            $pullOutput = shell_exec('git pull origin main 2>&1') ?? 'git pull executed.';
+        }
+
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
         $output = \Illuminate\Support\Facades\Artisan::output();
+
+        \Illuminate\Support\Facades\Artisan::call('optimize:clear');
+        $optimizeOutput = \Illuminate\Support\Facades\Artisan::output();
 
         if ($request->boolean('seed')) {
             \Illuminate\Support\Facades\Artisan::call('db:seed', [
@@ -169,25 +177,41 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
         return response()->json([
             'success' => true,
             'message' => 'Executed successfully.',
-            'output' => $output,
+            'git_pull' => $pullOutput,
+            'migration_output' => $output,
+            'optimize_output' => $optimizeOutput,
+            'deals_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deals'),
         ]);
     } catch (\Throwable $e) {
         return response()->json([
             'success' => false,
             'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
         ], 500);
     }
 });
 
-Route::get('/system/debug-status/{token}', function ($token) {
+Route::get('/system/debug-status/{token}', function ($token, \Illuminate\Http\Request $request) {
     if ($token !== 'taskwala_migrate_sec_9981') {
         abort(403, 'Unauthorized');
     }
+
+    $logFile = storage_path('logs/laravel.log');
+    $lastLog = '';
+    if (file_exists($logFile)) {
+        $lines = file($logFile);
+        $lastLog = implode('', array_slice($lines, -60));
+    }
+
+    $gitHead = shell_exec('git log -1 --oneline 2>&1') ?? 'N/A';
+
     return response()->json([
+        'git_head' => trim($gitHead),
+        'deals_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deals'),
+        'deal_sync_logs_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deal_sync_logs'),
         'campaign_count' => \App\Models\Campaign::count(),
-        'active_campaigns_count' => \App\Models\Campaign::where('status', 'active')->count(),
-        'campaigns' => \App\Models\Campaign::all(['id', 'name', 'status', 'category']),
         'user_count' => \App\Models\User::count(),
+        'latest_log' => $lastLog,
     ]);
 });
 
