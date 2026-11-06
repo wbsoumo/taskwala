@@ -289,6 +289,8 @@ Route::get('/system/debug-status/{token}', function ($token, \Illuminate\Http\Re
             $tgWeb = 'Error: ' . $e->getMessage();
         }
 
+        $tgAccount = \App\Models\TelegramAccount::first();
+
         return response()->json([
             'tg_api_reachability' => $tgApi,
             'tg_web_reachability' => $tgWeb,
@@ -296,6 +298,15 @@ Route::get('/system/debug-status/{token}', function ($token, \Illuminate\Http\Re
             'deal_sync_logs_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deal_sync_logs'),
             'campaign_count' => \App\Models\Campaign::count(),
             'user_count' => \App\Models\User::count(),
+            'telegram_account' => $tgAccount ? [
+                'id' => $tgAccount->id,
+                'phone' => $tgAccount->phone_number,
+                'status' => $tgAccount->status,
+                'phone_code_hash' => $tgAccount->phone_code_hash,
+                'has_session_string' => !empty($tgAccount->session_string),
+                'is_connected' => $tgAccount->is_connected,
+                'last_error' => $tgAccount->last_error,
+            ] : null,
             'latest_log' => $lastLog,
         ]);
     } catch (\Throwable $e) {

@@ -45,7 +45,17 @@ except ImportError as ie:
 
 
 def get_client(session_str: str, api_id: int, api_hash: str) -> TelegramClient:
-    return TelegramClient(StringSession(session_str or ""), api_id, api_hash)
+    from telethon.network import ConnectionTcpIntermediate
+    return TelegramClient(
+        StringSession(session_str or ""),
+        api_id,
+        api_hash,
+        connection=ConnectionTcpIntermediate,
+        connection_retries=15,
+        timeout=30,
+        retry_delay=2,
+        auto_reconnect=True,
+    )
 
 
 async def cmd_send_code(args):

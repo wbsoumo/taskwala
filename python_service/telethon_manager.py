@@ -47,8 +47,18 @@ class TelethonManager:
         if self.client and self.client.is_connected():
             return self.client
 
+        from telethon.network import ConnectionTcpIntermediate
         session = StringSession(session_str or self.session_str)
-        self.client = TelegramClient(session, effective_api_id, effective_api_hash)
+        self.client = TelegramClient(
+            session,
+            effective_api_id,
+            effective_api_hash,
+            connection=ConnectionTcpIntermediate,
+            connection_retries=15,
+            timeout=30,
+            retry_delay=2,
+            auto_reconnect=True,
+        )
         self.api_id = effective_api_id
         self.api_hash = effective_api_hash
         return self.client

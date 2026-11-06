@@ -87,6 +87,10 @@
                             <button type="button" class="btn btn-primary btn-block font-weight-bold mt-3 shadow-sm" id="btnSendCode" onclick="submitSendCode()">
                                 <i class="fas fa-paper-plane mr-1"></i> Send Telegram OTP
                             </button>
+
+                            <button type="button" class="btn btn-outline-secondary btn-block font-weight-bold mt-2" onclick="showOtpInput()">
+                                <i class="fas fa-key mr-1"></i> Already Received OTP? Enter Code
+                            </button>
                         </div>
 
                         <!-- STEP 2: ENTER OTP CODE -->
@@ -518,15 +522,29 @@
                 document.getElementById('inputOtpCode').focus();
             } else {
                 alertBox.style.display = 'block';
-                alertBox.innerHTML = '<div class="alert alert-danger py-2 px-3 small mb-0"><i class="fas fa-exclamation-triangle mr-1"></i> ' + data.message + '</div>';
+                alertBox.innerHTML = '<div class="alert alert-danger py-2 px-3 small mb-0">' +
+                    '<i class="fas fa-exclamation-triangle mr-1"></i> ' + data.message + 
+                    '<div class="mt-2 pt-2 border-top border-light"><button type="button" class="btn btn-sm btn-light font-weight-bold" onclick="showOtpInput()"><i class="fas fa-key mr-1"></i> Received OTP on your Telegram app? Click here to enter code</button></div>' +
+                    '</div>';
             }
         })
         .catch(err => {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i> Send Telegram OTP';
             alertBox.style.display = 'block';
-            alertBox.innerHTML = '<div class="alert alert-danger py-2 px-3 small mb-0">Request failed: ' + err + '</div>';
+            alertBox.innerHTML = '<div class="alert alert-danger py-2 px-3 small mb-0">Request error: ' + err + 
+                '<div class="mt-2"><button type="button" class="btn btn-sm btn-light font-weight-bold" onclick="showOtpInput()"><i class="fas fa-key mr-1"></i> Enter OTP Code Manually</button></div></div>';
         });
+    }
+
+    // Direct switch to OTP input
+    function showOtpInput() {
+        const phone = document.getElementById('inputPhone').value.trim();
+        document.getElementById('stepPhone').style.display = 'none';
+        document.getElementById('step2FA').style.display = 'none';
+        document.getElementById('stepCode').style.display = 'block';
+        document.getElementById('sentPhoneDisplay').innerText = phone || 'your Telegram number';
+        document.getElementById('inputOtpCode').focus();
     }
 
     // Back to Phone step
