@@ -32,6 +32,15 @@ class RedirectController extends Controller
             abort(404, 'Campaign offer link is inactive or expired.');
         }
 
+        $campaign = $link->campaign;
+        $clientIp = $request->ip();
+
+        // Check Duplicate IP if enabled for this campaign
+        if (!$request->boolean('force') && $this->trackingService->hasIpEngagedWithCampaign($campaign, $clientIp)) {
+            $theme = $campaign->theme ?? 'gradient_blue';
+            return view('public.duplicate_ip', compact('link', 'campaign', 'theme', 'clientIp', 'token'));
+        }
+
         // If customer payout is 0, redirect directly to advertiser URL
         if ((float) $link->customer_payout <= 0) {
             $result = $this->trackingService->processClick($token, $request);
@@ -39,7 +48,6 @@ class RedirectController extends Controller
         }
 
         // Otherwise, render Public Offer Page
-        $campaign = $link->campaign;
         $customerPayout = (float) $link->customer_payout;
         $theme = $campaign->theme ?? 'gradient_blue';
 
@@ -58,6 +66,15 @@ class RedirectController extends Controller
 
         if (!$link || $link->status !== 'active' || !$link->campaign->isActive() || !$link->user->isActive()) {
             abort(404, 'Campaign offer link is inactive or expired.');
+        }
+
+        $campaign = $link->campaign;
+        $clientIp = $request->ip();
+
+        // Check Duplicate IP if enabled for this campaign
+        if (!$request->boolean('force') && $this->trackingService->hasIpEngagedWithCampaign($campaign, $clientIp)) {
+            $theme = $campaign->theme ?? 'gradient_blue';
+            return view('public.duplicate_ip', compact('link', 'campaign', 'theme', 'clientIp', 'token'));
         }
 
         $validated = $request->validate([

@@ -137,6 +137,19 @@
                         <label>KPI & Qualification Requirements</label>
                         <textarea name="kpi_requirements" class="form-control" rows="2">{{ old('kpi_requirements') }}</textarea>
                     </div>
+
+                    <!-- Fraud & Duplicate IP Protection -->
+                    <div class="card bg-light border p-3 mb-3">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="checkDuplicateIp" name="check_duplicate_ip" value="1" {{ old('check_duplicate_ip', '1') == '1' ? 'checked' : '' }}>
+                            <label class="custom-control-label font-weight-bold text-dark" for="checkDuplicateIp">
+                                <i class="fas fa-shield-alt text-primary mr-1"></i> Check Duplicate IP (Prevent Fraud)
+                            </label>
+                        </div>
+                        <small class="form-text text-muted mt-1">
+                            When enabled, the system verifies that the same IP has not already engaged with this campaign. If a duplicate IP is detected on click/task open, users are prompted to switch networks (e.g., Wi-Fi to Mobile Data) to protect tracking conversion and avoid advertiser fraud rejection. If disabled, this check is completely skipped.
+                        </small>
+                    </div>
                 </div>
                 <div class="card-footer text-right">
                     <a href="{{ route('admin.campaigns.index') }}" class="btn btn-secondary mr-2">Cancel</a>

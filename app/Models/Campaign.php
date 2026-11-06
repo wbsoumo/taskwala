@@ -32,6 +32,7 @@ class Campaign extends Model
         'terms',
         'kpi_requirements',
         'duplicate_conversion_rules',
+        'check_duplicate_ip',
         'postback_provider_id',
         'postback_secret_key',
         'created_by',
@@ -43,6 +44,7 @@ class Campaign extends Model
         return [
             'advertiser_payout' => 'decimal:2',
             'default_affiliate_payout' => 'decimal:2',
+            'check_duplicate_ip' => 'boolean',
             'start_date' => 'datetime',
             'end_date' => 'datetime',
         ];

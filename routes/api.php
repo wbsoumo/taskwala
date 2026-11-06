@@ -25,6 +25,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/user/profile', [AuthController::class, 'profile']);
 
         Route::get('/campaigns', [CampaignController::class, 'index']);
+        Route::get('/campaigns/{id}/check-ip', [CampaignController::class, 'checkIp']);
+        Route::post('/campaigns/{id}/earn', [CampaignController::class, 'earnLink']);
         Route::get('/links', [LinkController::class, 'index']);
         Route::post('/links/generate', [LinkController::class, 'generate']);
 

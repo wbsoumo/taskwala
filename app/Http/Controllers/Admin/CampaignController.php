@@ -71,9 +71,12 @@ class CampaignController extends Controller
             'terms' => ['nullable', 'string'],
             'kpi_requirements' => ['nullable', 'string'],
             'duplicate_conversion_rules' => ['nullable', 'string'],
+            'check_duplicate_ip' => ['nullable', 'boolean'],
             'postback_provider_id' => ['nullable', 'exists:postback_providers,id'],
             'postback_secret_key' => ['nullable', 'string', 'max:64'],
         ]);
+
+        $validated['check_duplicate_ip'] = $request->boolean('check_duplicate_ip');
 
         // Handle File Upload if provided
         if ($request->hasFile('logo_file')) {
@@ -130,9 +133,12 @@ class CampaignController extends Controller
             'terms' => ['nullable', 'string'],
             'kpi_requirements' => ['nullable', 'string'],
             'duplicate_conversion_rules' => ['nullable', 'string'],
+            'check_duplicate_ip' => ['nullable', 'boolean'],
             'postback_provider_id' => ['nullable', 'exists:postback_providers,id'],
             'postback_secret_key' => ['nullable', 'string', 'max:64'],
         ]);
+
+        $validated['check_duplicate_ip'] = $request->boolean('check_duplicate_ip');
 
         // Handle File Upload if provided
         if ($request->hasFile('logo_file')) {

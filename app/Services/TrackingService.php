@@ -85,6 +85,21 @@ class TrackingService
         ];
     }
 
+    /**
+     * Check if an IP address has already clicked/engaged with a campaign.
+     * Skips checking if campaign->check_duplicate_ip is false or disabled.
+     */
+    public function hasIpEngagedWithCampaign(\App\Models\Campaign $campaign, ?string $ip): bool
+    {
+        if (!$campaign->check_duplicate_ip || empty($ip)) {
+            return false;
+        }
+
+        return Click::where('campaign_id', $campaign->id)
+            ->where('ip_address', $ip)
+            ->exists();
+    }
+
     protected function detectDeviceType(string $ua): string
     {
         if (preg_match('/(tablet|ipad|playbook)|(android(?!.*mobile))/i', $ua)) {

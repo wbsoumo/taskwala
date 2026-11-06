@@ -22,6 +22,9 @@ class CampaignService
             if (!\Illuminate\Support\Facades\Schema::hasColumn('campaigns', 'postback_secret_key')) {
                 unset($data['postback_secret_key']);
             }
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('campaigns', 'check_duplicate_ip')) {
+                unset($data['check_duplicate_ip']);
+            }
 
             $campaign = Campaign::create($data);
 
@@ -49,6 +52,9 @@ class CampaignService
             }
             if (!\Illuminate\Support\Facades\Schema::hasColumn('campaigns', 'postback_secret_key')) {
                 unset($data['postback_secret_key']);
+            }
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('campaigns', 'check_duplicate_ip')) {
+                unset($data['check_duplicate_ip']);
             }
 
             $campaign->update($data);

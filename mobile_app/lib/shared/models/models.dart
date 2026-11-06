@@ -71,6 +71,7 @@ class Campaign {
   final String? description;
   final String? terms;
   final String? eligibility;
+  final bool checkDuplicateIp;
 
   Campaign({
     required this.id,
@@ -85,6 +86,7 @@ class Campaign {
     this.description,
     this.terms,
     this.eligibility,
+    this.checkDuplicateIp = false,
   });
 
   factory Campaign.fromJson(Map<String, dynamic> json) {
@@ -105,6 +107,7 @@ class Campaign {
       description: json['short_description']?.toString() ?? json['description']?.toString(),
       terms: json['terms']?.toString(),
       eligibility: json['eligibility']?.toString(),
+      checkDuplicateIp: json['check_duplicate_ip'] == true || json['check_duplicate_ip'] == 1,
     );
   }
 }

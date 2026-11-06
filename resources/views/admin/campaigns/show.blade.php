@@ -39,6 +39,16 @@
                         <b>Conversion Event</b> <span class="float-right">{{ $campaign->conversion_event }}</span>
                     </li>
                     <li class="list-group-item">
+                        <b>Duplicate IP Protection</b> 
+                        <span class="float-right">
+                            @if($campaign->check_duplicate_ip)
+                                <span class="badge badge-success"><i class="fas fa-shield-alt mr-1"></i> Active (Duplicate IP Checked)</span>
+                            @else
+                                <span class="badge badge-secondary"><i class="fas fa-times-circle mr-1"></i> Disabled (Skipped)</span>
+                            @endif
+                        </span>
+                    </li>
+                    <li class="list-group-item">
                         <b>Offer Secret Key</b> 
                         <span class="float-right font-weight-bold text-dark">
                             <code>{{ $campaign->postback_secret_key ?? 'N/A' }}</code>
