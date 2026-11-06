@@ -124,16 +124,25 @@ Route::prefix('admin')->name('admin.')->group(function () {
 });
 
 // Secure cPanel migration helper
-Route::get('/system/run-migrations/{token}', function ($token) {
+Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\Request $request) {
     if ($token !== 'taskwala_migrate_sec_9981') {
         abort(403, 'Unauthorized');
     }
     try {
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
         $output = \Illuminate\Support\Facades\Artisan::output();
+
+        if ($request->boolean('seed')) {
+            \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                '--class' => 'Database\\Seeders\\DemoDataSeeder',
+                '--force' => true,
+            ]);
+            $output .= "\n" . \Illuminate\Support\Facades\Artisan::output();
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'Migrations executed successfully.',
+            'message' => 'Executed successfully.',
             'output' => $output,
         ]);
     } catch (\Throwable $e) {
