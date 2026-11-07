@@ -268,6 +268,56 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
             $output .= "\nDeals Metadata Refresh:\n" . \Illuminate\Support\Facades\Artisan::output();
         }
 
+        $fcmRetryResults = null;
+        if ($request->boolean('retry_failed_notifications')) {
+            $failedItems = \App\Models\UserNotification::where('fcm_status', 'failed')->get();
+            $fb = app(\App\Services\FirebaseService::class);
+            $retried = 0;
+            $delivered = 0;
+            $details = [];
+
+            foreach ($failedItems as $fItem) {
+                $user = $fItem->user;
+                $token = $fItem->fcm_token ?: $user?->fcm_token;
+                if (!empty($token)) {
+                    $retried++;
+                    $res = $fb->sendNotification($token, $fItem->title, $fItem->body, $fItem->deeplink, $fItem->image_url);
+                    if (!empty($res['success'])) {
+                        $delivered++;
+                        $fItem->update([
+                            'fcm_token' => $token,
+                            'fcm_status' => 'sent',
+                            'fcm_error' => null,
+                        ]);
+                        $details[] = ['id' => $fItem->id, 'user' => $user?->name, 'status' => 'delivered', 'message_id' => $res['message_id']];
+                    } else {
+                        $fItem->update([
+                            'fcm_error' => $res['error'] ?? 'Delivery failed',
+                        ]);
+                        $details[] = ['id' => $fItem->id, 'user' => $user?->name, 'status' => 'failed', 'error' => $res['error'] ?? 'failed'];
+                    }
+                }
+            }
+
+            // Sync parent counts
+            $appNotifIds = $failedItems->pluck('app_notification_id')->filter()->unique();
+            foreach ($appNotifIds as $anId) {
+                $an = \App\Models\AppNotification::find($anId);
+                if ($an) {
+                    $an->update([
+                        'sent_count' => \App\Models\UserNotification::where('app_notification_id', $anId)->where('fcm_status', 'sent')->count(),
+                        'failed_count' => \App\Models\UserNotification::where('app_notification_id', $anId)->where('fcm_status', 'failed')->count(),
+                    ]);
+                }
+            }
+
+            $fcmRetryResults = [
+                'retried' => $retried,
+                'delivered' => $delivered,
+                'details' => $details,
+            ];
+        }
+
         // Test python candidates
         $pythonDiagnostics = [];
         $runCmd = function ($commandLine) {
@@ -324,6 +374,7 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
                     'logo' => $c->logo,
                 ];
             }),
+            'fcm_retry_results' => $fcmRetryResults,
             'firebase_diagnostic' => [
                 'cred_file_exists' => file_exists(storage_path('app/firebase-credentials.json')),
                 'cred_file_readable' => is_readable(storage_path('app/firebase-credentials.json')),
