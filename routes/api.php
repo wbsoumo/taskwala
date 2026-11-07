@@ -29,6 +29,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/campaigns/{id}/earn', [CampaignController::class, 'earnLink']);
         Route::get('/links', [LinkController::class, 'index']);
         Route::post('/links/generate', [LinkController::class, 'generate']);
+        Route::post('/links/{id}/toggle-status', [LinkController::class, 'toggleStatus']);
+        Route::patch('/links/{id}/toggle-status', [LinkController::class, 'toggleStatus']);
 
         // Deals Aggregation Endpoints
         Route::get('/deals', [\App\Http\Controllers\Api\V1\DealController::class, 'index']);

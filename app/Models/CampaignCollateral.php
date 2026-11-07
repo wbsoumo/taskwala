@@ -14,6 +14,7 @@ class CampaignCollateral extends Model
         'campaign_id',
         'title',
         'media_type',
+        'category_preset',
         'file_path',
         'thumbnail_path',
         'default_caption',
@@ -46,7 +47,7 @@ class CampaignCollateral extends Model
             return $this->file_path;
         }
 
-        return url($this->file_path);
+        return url('/' . ltrim($this->file_path, '/'));
     }
 
     public function getThumbnailUrlAttribute(): ?string

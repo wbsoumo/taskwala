@@ -192,24 +192,38 @@ class CampaignController extends Controller
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'media_type' => ['required', 'in:image,video'],
-            'media_file' => ['required', 'file', 'mimes:png,jpg,jpeg,webp,mp4,mov,avi', 'max:51200'],
-            'default_caption' => ['nullable', 'string', 'max:2000'],
+            'media_type' => ['required', 'in:image,video,text'],
+            'category_preset' => ['nullable', 'in:special_deal,friends_share,cashback_alert,general'],
+            'media_file' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,mp4,mov,avi', 'max:51200'],
+            'default_caption' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        $filePath = $request->file('media_file')->store('collaterals', 'public');
+        if ($validated['media_type'] !== 'text' && !$request->hasFile('media_file')) {
+            return back()->withErrors(['media_file' => 'A media file (image/video) is required for this media type.'])->withInput();
+        }
+
+        if ($validated['media_type'] === 'text' && empty($validated['default_caption'])) {
+            return back()->withErrors(['default_caption' => 'Promotional caption message is required for text templates.'])->withInput();
+        }
+
+        $filePath = null;
+        if ($request->hasFile('media_file')) {
+            $path = $request->file('media_file')->store('collaterals', 'public');
+            $filePath = Storage::url($path);
+        }
 
         $campaign->collaterals()->create([
             'title' => $validated['title'],
             'media_type' => $validated['media_type'],
-            'file_path' => Storage::url($filePath),
+            'category_preset' => $validated['category_preset'] ?? 'general',
+            'file_path' => $filePath,
             'default_caption' => $validated['default_caption'] ?? null,
             'sort_order' => $campaign->collaterals()->count(),
             'is_active' => true,
         ]);
 
         return redirect()->route('admin.campaigns.show', $campaign)
-            ->with('success', 'Marketing collateral uploaded successfully.');
+            ->with('success', 'Marketing collateral / promotional template added successfully.');
     }
 
     public function deleteCollateral(int $id)

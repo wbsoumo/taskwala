@@ -161,37 +161,48 @@
                 <div class="row">
                     <!-- Upload Collateral Form -->
                     <div class="col-md-4 col-12 border-right">
-                        <h5 class="font-weight-bold mb-3"><i class="fas fa-cloud-upload-alt mr-1"></i> Upload New Collateral</h5>
+                        <h5 class="font-weight-bold mb-3"><i class="fas fa-cloud-upload-alt mr-1"></i> Upload Collateral / Template</h5>
                         <form method="POST" action="{{ route('admin.campaigns.collaterals.upload', $campaign) }}" enctype="multipart/form-data">
                             @csrf
                             <div class="form-group mb-2">
-                                <label class="font-weight-bold small">Collateral Title / Theme</label>
-                                <input type="text" name="title" class="form-control form-control-sm" placeholder="e.g. High Conversion Story Banner" required>
+                                <label class="font-weight-bold small">Template Title / Theme</label>
+                                <input type="text" name="title" class="form-control form-control-sm" placeholder="e.g. Loot Deal Story or Cashback Alert" required>
                             </div>
                             <div class="form-group mb-2">
-                                <label class="font-weight-bold small">Media Type</label>
-                                <select name="media_type" class="form-control form-control-sm" required>
-                                    <option value="image">Poster / Banner Image (PNG, JPG, WEBP)</option>
-                                    <option value="video">Promo Video (MP4)</option>
+                                <label class="font-weight-bold small">Promotional Category / Preset</label>
+                                <select name="category_preset" class="form-control form-control-sm" required>
+                                    <option value="special_deal">🔥 Special Deal / Loot Offer</option>
+                                    <option value="friends_share">👋 Friends Share / Referral</option>
+                                    <option value="cashback_alert">⚡ Cashback Alert / Earnings</option>
+                                    <option value="general" selected>🎯 General Promotion</option>
                                 </select>
                             </div>
                             <div class="form-group mb-2">
+                                <label class="font-weight-bold small">Media Type</label>
+                                <select name="media_type" id="collateral_media_type" class="form-control form-control-sm" required onchange="toggleMediaFileInput(this.value)">
+                                    <option value="image">Poster / Banner Image (PNG, JPG, WEBP)</option>
+                                    <option value="video">Promo Video (MP4)</option>
+                                    <option value="text">Text-Only Message Template (No Media Required)</option>
+                                </select>
+                            </div>
+                            <div class="form-group mb-2" id="media_file_group">
                                 <label class="font-weight-bold small">Media File (Max 50MB)</label>
-                                <input type="file" name="media_file" class="form-control-file" required>
+                                <input type="file" name="media_file" id="media_file_input" class="form-control-file" required>
                             </div>
                             <div class="form-group mb-3">
-                                <label class="font-weight-bold small">Pre-Written WhatsApp Copy / Caption</label>
+                                <label class="font-weight-bold small">Pre-Written WhatsApp / Promotional Copy</label>
                                 <textarea name="default_caption" class="form-control form-control-sm" rows="3" placeholder="e.g. 🔥 Exclusive offer! Get instant cashback when you sign up here:"></textarea>
+                                <small class="text-muted font-italic">Affiliates will see this pre-filled when sharing with their personalized tracking link.</small>
                             </div>
                             <button type="submit" class="btn btn-info btn-block btn-sm font-weight-bold shadow-sm">
-                                <i class="fas fa-upload mr-1"></i> Upload Collateral
+                                <i class="fas fa-upload mr-1"></i> Save Collateral / Template
                             </button>
                         </form>
                     </div>
 
                     <!-- Collaterals List -->
                     <div class="col-md-8 col-12">
-                        <h5 class="font-weight-bold mb-3"><i class="fas fa-layer-group mr-1"></i> Active Collaterals ({{ $campaign->collaterals->count() }})</h5>
+                        <h5 class="font-weight-bold mb-3"><i class="fas fa-layer-group mr-1"></i> Active Collaterals & Templates ({{ $campaign->collaterals->count() }})</h5>
                         <div class="row">
                             @forelse($campaign->collaterals as $col)
                                 <div class="col-md-4 col-sm-6 col-12 mb-3">
@@ -201,20 +212,40 @@
                                                 <i class="fas fa-play-circle fa-3x text-info"></i>
                                                 <div class="small mt-1">Video Promo</div>
                                             </div>
+                                        @elseif($col->media_type === 'text')
+                                            <div class="bg-light text-center py-4 rounded-top border-bottom" style="height: 120px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 100%);">
+                                                <i class="fas fa-comment-dots fa-2x text-primary mb-1"></i>
+                                                <span class="badge badge-light border text-primary">Text Copy Template</span>
+                                            </div>
                                         @else
-                                            <img src="{{ $col->media_url }}" class="card-img-top" style="height: 120px; object-fit: cover;" alt="{{ $col->title }}">
+                                            <img src="{{ $col->media_url }}" class="card-img-top" style="height: 120px; object-fit: cover;" alt="{{ $col->title }}" onerror="this.onerror=null; this.src='https://placehold.co/400x250/e2e8f0/475569?text=Media+Preview';">
                                         @endif
                                         <div class="card-body p-2">
-                                            <span class="badge badge-{{ $col->media_type === 'video' ? 'danger' : 'primary' }} text-uppercase">{{ $col->media_type }}</span>
-                                            <div class="font-weight-bold small mt-1 text-truncate">{{ $col->title }}</div>
+                                            <div class="mb-1">
+                                                @if(($col->category_preset ?? 'general') === 'special_deal')
+                                                    <span class="badge badge-warning text-dark"><i class="fas fa-fire mr-1"></i>Special Deal</span>
+                                                @elseif(($col->category_preset ?? '') === 'friends_share')
+                                                    <span class="badge badge-success"><i class="fas fa-user-friends mr-1"></i>Friends Share</span>
+                                                @elseif(($col->category_preset ?? '') === 'cashback_alert')
+                                                    <span class="badge badge-info"><i class="fas fa-bolt mr-1"></i>Cashback Alert</span>
+                                                @else
+                                                    <span class="badge badge-secondary"><i class="fas fa-tag mr-1"></i>General</span>
+                                                @endif
+                                                <span class="badge badge-light border text-uppercase">{{ $col->media_type }}</span>
+                                            </div>
+                                            <div class="font-weight-bold small text-truncate">{{ $col->title }}</div>
                                             @if($col->default_caption)
-                                                <small class="text-muted d-block text-truncate mt-1">{{ $col->default_caption }}</small>
+                                                <small class="text-muted d-block text-truncate mt-1" title="{{ $col->default_caption }}">{{ $col->default_caption }}</small>
                                             @endif
                                         </div>
                                         <div class="card-footer p-2 bg-light d-flex justify-content-between align-items-center">
-                                            <a href="{{ $col->media_url }}" target="_blank" class="btn btn-xs btn-outline-primary">
-                                                <i class="fas fa-external-link-alt mr-1"></i>View
-                                            </a>
+                                            @if($col->media_url)
+                                                <a href="{{ $col->media_url }}" target="_blank" class="btn btn-xs btn-outline-primary">
+                                                    <i class="fas fa-external-link-alt mr-1"></i>View
+                                                </a>
+                                            @else
+                                                <span class="badge badge-light text-muted">Copy Only</span>
+                                            @endif
                                             <form method="POST" action="{{ route('admin.campaigns.collaterals.delete', $col->id) }}" onsubmit="return confirm('Delete this collateral?');">
                                                 @csrf
                                                 @method('DELETE')
@@ -228,7 +259,7 @@
                             @empty
                                 <div class="col-12 py-4 text-center text-muted">
                                     <i class="fas fa-photo-video fa-2x mb-2 d-block text-secondary"></i>
-                                    No marketing collaterals uploaded yet. Upload posters or short promo videos above to let affiliates share rich media with pre-written text on WhatsApp!
+                                    No marketing collaterals or promotional templates uploaded yet. Upload posters, videos, or pre-written message templates above!
                                 </div>
                             @endforelse
                         </div>
@@ -239,4 +270,17 @@
     </div>
 </div>
 
+<script>
+function toggleMediaFileInput(mediaType) {
+    const group = document.getElementById('media_file_group');
+    const input = document.getElementById('media_file_input');
+    if (mediaType === 'text') {
+        group.style.display = 'none';
+        input.removeAttribute('required');
+    } else {
+        group.style.display = 'block';
+        input.setAttribute('required', 'required');
+    }
+}
+</script>
 @endsection

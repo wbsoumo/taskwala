@@ -3,10 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../shared/models/models.dart';
 import '../../../shared/providers/app_providers.dart';
+import '../../../shared/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/bouncing_card.dart';
@@ -22,6 +23,77 @@ class MyLinksScreen extends ConsumerStatefulWidget {
 
 class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
   String _activeTab = 'Active';
+  final Set<int> _togglingIds = {};
+
+  Future<void> _toggleLinkStatus(AffiliateLink link) async {
+    if (_togglingIds.contains(link.id)) return;
+
+    setState(() => _togglingIds.add(link.id));
+    HapticFeedback.lightImpact();
+
+    try {
+      final api = ref.read(apiClientProvider);
+      await api.post('/links/${link.id}/toggle-status');
+      
+      ref.invalidate(myLinksProvider);
+
+      if (mounted) {
+        final isNowActive = !link.isActive;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: isNowActive ? AppColors.mint : AppColors.surfaceSecondary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Row(
+              children: [
+                Icon(
+                  isNowActive ? Icons.check_circle_rounded : Icons.pause_circle_filled_rounded,
+                  color: isNowActive ? Colors.white : AppColors.textPrimary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isNowActive ? 'Link activated & now tracking clicks!' : 'Link paused. Visits will be blocked.',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w600,
+                    color: isNowActive ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Text(
+              'Could not update link status: $e',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, color: Colors.white),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _togglingIds.remove(link.id));
+      }
+    }
+  }
+
+  List<AffiliateLink> _filterLinks(List<AffiliateLink> all) {
+    if (_activeTab == 'Active') {
+      return all.where((l) => l.isActive).toList();
+    }
+    if (_activeTab == 'Paused') {
+      return all.where((l) => !l.isActive).toList();
+    }
+    return all;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,12 +190,27 @@ class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
                   );
                 }
 
+                final filtered = _filterLinks(links);
+
+                if (filtered.isEmpty) {
+                  return TaskwalaEmptyState(
+                    icon: _activeTab == 'Paused' ? Icons.pause_circle_outline_rounded : Icons.filter_alt_off_rounded,
+                    title: _activeTab == 'Paused' ? 'No Paused Links' : 'No Active Links Found',
+                    message: _activeTab == 'Paused'
+                        ? 'All of your generated tracking links are currently active and live.'
+                        : 'You currently have no active links in this filter.',
+                    actionLabel: 'View All Links',
+                    onAction: () => setState(() => _activeTab = 'All'),
+                  );
+                }
+
                 return ListView.builder(
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  itemCount: links.length,
+                  itemCount: filtered.length,
                   itemBuilder: (context, index) {
-                    final link = links[index];
+                    final link = filtered[index];
+                    final isToggling = _togglingIds.contains(link.id);
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 14),
@@ -131,7 +218,9 @@ class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(
+                          color: link.isActive ? AppColors.border : AppColors.borderSubtle,
+                        ),
                         boxShadow: AppShadows.soft,
                       ),
                       child: Column(
@@ -151,13 +240,37 @@ class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      link.campaignName,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.textPrimary,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            link.campaignName,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: link.isActive ? AppColors.mintBg : AppColors.surfaceSecondary,
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            link.isActive ? 'ACTIVE' : 'PAUSED',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                              color: link.isActive ? AppColors.mint : AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                     const SizedBox(height: 3),
                                     Row(
@@ -183,12 +296,26 @@ class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
                                   ],
                                 ),
                               ),
-                              Switch(
-                                value: true,
-                                activeTrackColor: AppColors.primaryLight,
-                                activeThumbColor: AppColors.primary,
-                                onChanged: (_) {},
-                              ),
+                              const SizedBox(width: 8),
+                              isToggling
+                                  ? const SizedBox(
+                                      width: 32,
+                                      height: 32,
+                                      child: Padding(
+                                        padding: EdgeInsets.all(6),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    )
+                                  : Switch(
+                                      value: link.isActive,
+                                      activeTrackColor: AppColors.primaryLight,
+                                      activeThumbColor: AppColors.primary,
+                                      inactiveThumbColor: AppColors.textMuted,
+                                      onChanged: (_) => _toggleLinkStatus(link),
+                                    ),
                             ],
                           ),
                           const SizedBox(height: 14),
@@ -205,7 +332,7 @@ class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
                                     link.secureUrl,
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 12,
-                                      color: AppColors.textPrimary,
+                                      color: link.isActive ? AppColors.textPrimary : AppColors.textMuted,
                                       fontWeight: FontWeight.w500,
                                     ),
                                     overflow: TextOverflow.ellipsis,
@@ -227,20 +354,37 @@ class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
                               ),
                               Row(
                                 children: [
+                                  // Promotional Share Studio Button
                                   BouncingCard(
                                     onTap: () {
-                                      Share.share('Check out this link: ${link.secureUrl}');
+                                      context.push('/link-share', extra: link);
                                     },
                                     child: Container(
-                                      padding: const EdgeInsets.all(8),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                       decoration: BoxDecoration(
                                         color: AppColors.primaryLight,
                                         borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                                       ),
-                                      child: const Icon(Icons.share_rounded, size: 18, color: AppColors.primary),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.share_rounded, size: 16, color: AppColors.primary),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            'Share',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
+                                  // Quick Copy Button
                                   BouncingCard(
                                     onTap: () {
                                       Clipboard.setData(ClipboardData(text: link.secureUrl));

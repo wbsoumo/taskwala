@@ -13,6 +13,7 @@ import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/campaigns/presentation/campaigns_screen.dart';
 import '../../features/links/presentation/link_generator_screen.dart';
 import '../../features/links/presentation/my_links_screen.dart';
+import '../../features/links/presentation/link_share_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/wallet/presentation/wallet_screen.dart';
 import '../../features/wallet/presentation/payout_screen.dart';
@@ -189,6 +190,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             context: context,
             state: state,
             child: LinkGeneratorScreen(campaign: campaign),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/link-share',
+        pageBuilder: (context, state) {
+          final link = state.extra as AffiliateLink?;
+          if (link == null) {
+            return _buildSmoothPage(
+              context: context,
+              state: state,
+              child: const MyLinksScreen(),
+            );
+          }
+          return _buildSmoothPage(
+            context: context,
+            state: state,
+            child: LinkShareScreen(link: link),
           );
         },
       ),

@@ -12,6 +12,26 @@ double _parseDouble(dynamic val) {
   return double.tryParse(val.toString()) ?? 0.0;
 }
 
+String normalizeMediaUrl(String? url) {
+  if (url == null || url.trim().isEmpty) return '';
+  var trimmed = url.trim();
+  if (trimmed.startsWith('//')) {
+    return 'https:$trimmed';
+  }
+  if (trimmed.startsWith('/')) {
+    return 'https://taskwala.co.in$trimmed';
+  }
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    if (trimmed.startsWith('storage/')) {
+      return 'https://taskwala.co.in/$trimmed';
+    }
+  }
+  if (trimmed.startsWith('http://taskwala.co.in')) {
+    return trimmed.replaceFirst('http://taskwala.co.in', 'https://taskwala.co.in');
+  }
+  return trimmed;
+}
+
 class User {
   final String publicId;
   final String name;
@@ -61,7 +81,8 @@ class User {
 class CampaignCollateral {
   final int id;
   final String title;
-  final String mediaType; // 'image' or 'video'
+  final String mediaType; // 'image', 'video', 'text'
+  final String categoryPreset; // 'special_deal', 'friends_share', 'cashback_alert', 'general'
   final String mediaUrl;
   final String? thumbnailUrl;
   final String? defaultCaption;
@@ -70,6 +91,7 @@ class CampaignCollateral {
     required this.id,
     required this.title,
     required this.mediaType,
+    this.categoryPreset = 'general',
     required this.mediaUrl,
     this.thumbnailUrl,
     this.defaultCaption,
@@ -80,8 +102,9 @@ class CampaignCollateral {
       id: _parseInt(json['id']),
       title: json['title']?.toString() ?? 'Marketing Asset',
       mediaType: json['media_type']?.toString() ?? 'image',
-      mediaUrl: json['media_url']?.toString() ?? '',
-      thumbnailUrl: json['thumbnail_url']?.toString(),
+      categoryPreset: json['category_preset']?.toString() ?? 'general',
+      mediaUrl: normalizeMediaUrl(json['media_url']?.toString() ?? json['file_path']?.toString()),
+      thumbnailUrl: json['thumbnail_url'] != null ? normalizeMediaUrl(json['thumbnail_url']?.toString()) : null,
       defaultCaption: json['default_caption']?.toString(),
     );
   }
@@ -90,6 +113,7 @@ class CampaignCollateral {
         'id': id,
         'title': title,
         'media_type': mediaType,
+        'category_preset': categoryPreset,
         'media_url': mediaUrl,
         'thumbnail_url': thumbnailUrl,
         'default_caption': defaultCaption,
@@ -145,7 +169,7 @@ class Campaign {
       id: fallbackId,
       publicId: pubId,
       name: json['name']?.toString() ?? '',
-      logo: (json['logo'] ?? json['logo_url'])?.toString(),
+      logo: normalizeMediaUrl((json['logo'] ?? json['logo_url'])?.toString()),
       category: json['category']?.toString() ?? 'General',
       advertiserPayout: _parseDouble(json['advertiser_payout'] ?? json['payout_amount']),
       affiliatePayout: _parseDouble(json['allocated_affiliate_payout'] ?? json['affiliate_payout'] ?? json['user_payout'] ?? json['payout_amount']),
@@ -162,6 +186,7 @@ class Campaign {
 
 class AffiliateLink {
   final int id;
+  final String publicId;
   final int campaignId;
   final String campaignName;
   final String? campaignLogo;
@@ -172,10 +197,16 @@ class AffiliateLink {
   final double affiliateCommission;
   final int clicks;
   final int conversions;
+  final String status;
   final String createdAt;
+  final Campaign? campaign;
+  final List<CampaignCollateral> collaterals;
+
+  bool get isActive => status.toLowerCase() == 'active';
 
   AffiliateLink({
     required this.id,
+    this.publicId = '',
     required this.campaignId,
     required this.campaignName,
     this.campaignLogo,
@@ -186,8 +217,49 @@ class AffiliateLink {
     required this.affiliateCommission,
     required this.clicks,
     required this.conversions,
+    this.status = 'active',
     required this.createdAt,
+    this.campaign,
+    this.collaterals = const [],
   });
+
+  AffiliateLink copyWith({
+    int? id,
+    String? publicId,
+    int? campaignId,
+    String? campaignName,
+    String? campaignLogo,
+    String? category,
+    String? secureUrl,
+    String? code,
+    double? customerPayout,
+    double? affiliateCommission,
+    int? clicks,
+    int? conversions,
+    String? status,
+    String? createdAt,
+    Campaign? campaign,
+    List<CampaignCollateral>? collaterals,
+  }) {
+    return AffiliateLink(
+      id: id ?? this.id,
+      publicId: publicId ?? this.publicId,
+      campaignId: campaignId ?? this.campaignId,
+      campaignName: campaignName ?? this.campaignName,
+      campaignLogo: campaignLogo ?? this.campaignLogo,
+      category: category ?? this.category,
+      secureUrl: secureUrl ?? this.secureUrl,
+      code: code ?? this.code,
+      customerPayout: customerPayout ?? this.customerPayout,
+      affiliateCommission: affiliateCommission ?? this.affiliateCommission,
+      clicks: clicks ?? this.clicks,
+      conversions: conversions ?? this.conversions,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      campaign: campaign ?? this.campaign,
+      collaterals: collaterals ?? this.collaterals,
+    );
+  }
 
   factory AffiliateLink.fromJson(Map<String, dynamic> json) {
     final parsedId = _parseInt(json['id']);
@@ -198,11 +270,23 @@ class AffiliateLink {
         ? rawUrl
         : (token.isNotEmpty ? 'https://taskwala.co.in/go/$token' : '');
 
+    final campaignObj = json['campaign'] != null
+        ? Campaign.fromJson(Map<String, dynamic>.from(json['campaign'] as Map))
+        : null;
+
+    final rawCols = json['collaterals'] ?? json['campaign']?['collaterals'];
+    final List<CampaignCollateral> collateralList = (rawCols is List)
+        ? rawCols
+            .map((c) => CampaignCollateral.fromJson(Map<String, dynamic>.from(c as Map)))
+            .toList()
+        : (campaignObj?.collaterals ?? const []);
+
     return AffiliateLink(
       id: parsedId != 0 ? parsedId : (json['public_id']?.toString().hashCode.abs() ?? 0),
+      publicId: json['public_id']?.toString() ?? '',
       campaignId: parsedCampId != 0 ? parsedCampId : 1,
       campaignName: json['campaign_name']?.toString() ?? json['campaign']?['name']?.toString() ?? 'Campaign',
-      campaignLogo: (json['campaign_logo'] ?? json['campaign']?['logo'] ?? json['campaign']?['logo_url'])?.toString(),
+      campaignLogo: normalizeMediaUrl((json['campaign_logo'] ?? json['campaign']?['logo'] ?? json['campaign']?['logo_url'])?.toString()),
       category: json['category']?.toString() ?? json['campaign']?['category']?.toString() ?? 'General',
       secureUrl: url,
       code: token,
@@ -210,7 +294,10 @@ class AffiliateLink {
       affiliateCommission: _parseDouble(json['affiliate_commission']),
       clicks: _parseInt(json['clicks_count'] ?? json['click_count'] ?? json['clicks']),
       conversions: _parseInt(json['conversions_count'] ?? json['conversion_count'] ?? json['conversions']),
+      status: json['status']?.toString() ?? 'active',
       createdAt: json['created_at']?.toString() ?? '',
+      campaign: campaignObj,
+      collaterals: collateralList,
     );
   }
 }

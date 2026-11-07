@@ -29,14 +29,27 @@ use Illuminate\Support\Facades\Route;
 Route::get('/go/{token}', [RedirectController::class, 'redirect'])->name('tracking.redirect');
 Route::post('/go/{token}/submit', [RedirectController::class, 'submitTask'])->name('tracking.submit');
 
-// Fallback media asset handler for cPanel shared hosting
-Route::get('/storage/campaigns/{filename}', function ($filename) {
-    $path = storage_path('app/public/campaigns/' . $filename);
-    if (!file_exists($path)) {
-        abort(404);
+// Universal media asset handler for cPanel shared hosting (storage symlink fallback)
+Route::get('/storage/{path}', function ($path) {
+    $safePath = str_replace(['..', "\0"], '', $path);
+    $fullPath = storage_path('app/public/' . $safePath);
+    if (file_exists($fullPath) && is_file($fullPath)) {
+        $mime = @mime_content_type($fullPath) ?: 'application/octet-stream';
+        return response()->file($fullPath, [
+            'Content-Type' => $mime,
+            'Cache-Control' => 'public, max-age=604800, immutable',
+        ]);
     }
-    return response()->file($path);
-});
+    $publicPath = public_path('storage/' . $safePath);
+    if (file_exists($publicPath) && is_file($publicPath)) {
+        $mime = @mime_content_type($publicPath) ?: 'application/octet-stream';
+        return response()->file($publicPath, [
+            'Content-Type' => $mime,
+            'Cache-Control' => 'public, max-age=604800, immutable',
+        ]);
+    }
+    abort(404);
+})->where('path', '.*');
 
 // 2. ROOT ROUTE REDIRECT
 Route::get('/', function () {
@@ -199,6 +212,12 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
 
         \Illuminate\Support\Facades\Artisan::call('optimize:clear');
         $optimizeOutput = \Illuminate\Support\Facades\Artisan::output();
+
+        try {
+            if (!file_exists(public_path('storage'))) {
+                @\Illuminate\Support\Facades\Artisan::call('storage:link');
+            }
+        } catch (\Throwable $e) {}
 
         if ($request->boolean('seed')) {
             \Illuminate\Support\Facades\Artisan::call('db:seed', [

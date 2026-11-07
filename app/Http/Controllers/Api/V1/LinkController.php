@@ -20,12 +20,45 @@ class LinkController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $links = AffiliateLink::with('campaign')
+        $links = AffiliateLink::with(['campaign.collaterals' => function ($q) {
+            $q->where('is_active', true)->orderBy('sort_order');
+        }])
             ->where('user_id', $request->user()->id)
             ->latest()
-            ->paginate(20);
+            ->paginate(50);
 
         return response()->json($links);
+    }
+
+    public function toggleStatus(Request $request, $id): JsonResponse
+    {
+        $link = AffiliateLink::with(['campaign.collaterals' => function ($q) {
+            $q->where('is_active', true)->orderBy('sort_order');
+        }])
+            ->where('user_id', $request->user()->id)
+            ->where(function ($q) use ($id) {
+                $q->where('id', $id)->orWhere('public_id', $id);
+            })
+            ->first();
+
+        if (!$link) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tracking link not found.',
+            ], 404);
+        }
+
+        $newStatus = ($link->status === 'active') ? 'paused' : 'active';
+        $link->status = $newStatus;
+        $link->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Tracking link successfully " . ($newStatus === 'active' ? 'activated' : 'paused') . ".",
+            'status' => $newStatus,
+            'data' => $link,
+            'link' => $link,
+        ]);
     }
 
     public function generate(Request $request): JsonResponse
