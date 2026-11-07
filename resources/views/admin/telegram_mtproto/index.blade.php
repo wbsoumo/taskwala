@@ -190,8 +190,8 @@
                     </div>
                 @else
                     <div class="mt-2 text-muted text-xs">
-                        <i class="fas fa-info-circle text-info mr-1"></i> Background deals sync is triggered via cPanel Cron:
-                        <code class="d-block mt-1 text-dark bg-light p-1 rounded font-monospace">* * * * * cd /home/ehcubedv/public_html && php artisan schedule:run >> /dev/null 2>&1</code>
+                        <i class="fas fa-info-circle text-info mr-1"></i> Auto Deals Sync Cron (add to cPanel Cron Jobs):
+                        <code class="d-block mt-1 text-white bg-dark p-2 rounded font-monospace" style="word-break: break-all;">*/10 * * * * curl -s "{{ url('/system/cron/deals-sync/taskwala_migrate_sec_9981') }}" >/dev/null 2>&1</code>
                     </div>
                 @endif
             </div>

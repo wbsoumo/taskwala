@@ -90,11 +90,14 @@ class TelegramMtprotoSyncCommand extends Command
                     $dealsFound = $res['deals_found'] ?? 0;
 
                     // Ensure messages are processed into DB
-                    if (!empty($messages)) {
+                    $procResult = $res['processed_result'] ?? null;
+                    if (!$procResult && !empty($messages)) {
                         $procResult = $this->messageProcessor->processPayload([
                             'batch' => true,
                             'messages' => $messages,
                         ]);
+                    }
+                    if ($procResult) {
                         $totalProcessed += ($procResult['messages_processed'] ?? 0);
                         $totalDeals += ($procResult['deals_created'] ?? 0);
                     }

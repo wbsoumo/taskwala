@@ -76,73 +76,99 @@ class TelegramMessageProcessor
         $channel = TelegramMonitoredChannel::where('channel_id', $channelId)->first();
         $channelName = $channel ? ($channel->username ? '@' . $channel->username : $channel->title) : (string) $channelId;
 
-        // Check if message already exists
-        $existing = TelegramMessage::where('channel_id', $channelId)
-            ->where('message_id', $messageId)
-            ->first();
-
-        if ($existing && !$isEdited) {
-            return ['processed' => false, 'duplicate' => true];
-        }
-
         // Detect if this is an e-commerce / deal message
         $isDeal = false;
         $dealId = $existing?->deal_id;
-        $validUrl = reset($urls) ?: null;
+        $dealCreated = false;
 
-        if ($validUrl && $this->telegramDealService->isValidDealUrl($validUrl)) {
-            $isDeal = true;
-            $imageUrl = $mediaPath ? asset('storage/' . $mediaPath) : null;
-
-            // Build deal payload
-            $dealPayload = $this->telegramDealService->buildDealPayload(
-                $text,
-                $validUrl,
-                $channelName,
-                (string) $messageId,
-                $imageUrl,
-                $postedAt
-            );
-
-            // Store or update deal
-            $dealResult = $this->dealAggregatorService->processAndStoreDeal($dealPayload);
-            if (!empty($dealResult['deal'])) {
-                $dealId = $dealResult['deal']->id;
+        // Check all extracted URLs for a valid deal link
+        $validUrl = null;
+        if (!empty($urls) && is_array($urls)) {
+            foreach ($urls as $u) {
+                if ($this->telegramDealService->isValidDealUrl($u)) {
+                    $validUrl = $u;
+                    break;
+                }
             }
         }
 
-        // Create or update TelegramMessage record
-        if ($existing) {
-            $existing->update([
-                'text' => $text,
-                'media_type' => $mediaType,
-                'media_local_path' => $mediaPath ?: $existing->media_local_path,
-                'extracted_urls' => $urls,
-                'is_deal' => $isDeal,
-                'deal_id' => $dealId,
-                'is_edited' => true,
-                'edited_at' => $editedAt ?: now(),
-                'raw_payload' => $data['raw'] ?? $existing->raw_payload,
-            ]);
-            $msgRecord = $existing;
-        } else {
-            $msgRecord = TelegramMessage::create([
-                'channel_id' => $channelId,
-                'message_id' => $messageId,
-                'sender_id' => $data['sender_id'] ?? null,
-                'text' => $text,
-                'media_type' => $mediaType,
-                'media_local_path' => $mediaPath,
-                'extracted_urls' => $urls,
-                'is_deal' => $isDeal,
-                'deal_id' => $dealId,
-                'is_edited' => false,
-                'raw_payload' => $data['raw'] ?? [],
-                'posted_at' => $postedAt,
-            ]);
+        // Fallback: search text directly if extracted_urls was empty
+        if (!$validUrl && !empty($text)) {
+            $extractedFromText = $this->telegramDealService->extractUrlFromRawText($text);
+            if ($extractedFromText && $this->telegramDealService->isValidDealUrl($extractedFromText)) {
+                $validUrl = $extractedFromText;
+                $urls[] = $validUrl;
+            }
+        }
 
-            // Update channel counters
-            if ($channel) {
+        if ($validUrl) {
+            $isDeal = true;
+            $imageUrl = $mediaPath ? asset('storage/' . $mediaPath) : null;
+
+            // Check if deal already exists in the deals table
+            $dealExists = $dealId ? Deal::where('id', $dealId)->exists() : false;
+
+            // If deal doesn't exist yet, or message was edited, process and store deal
+            if (!$dealExists || $isEdited) {
+                try {
+                    $dealPayload = $this->telegramDealService->buildDealPayload(
+                        $text,
+                        $validUrl,
+                        $channelName,
+                        (string) $messageId,
+                        $imageUrl,
+                        $postedAt
+                    );
+
+                    $dealResult = $this->dealAggregatorService->processAndStoreDeal($dealPayload);
+                    if (!empty($dealResult['deal'])) {
+                        $dealId = $dealResult['deal']->id;
+                        $dealCreated = true;
+                    } elseif (!empty($dealResult['deal_id'])) {
+                        $dealId = $dealResult['deal_id'];
+                    }
+                } catch (\Throwable $de) {
+                    Log::warning("Failed to store deal for Telegram msg {$channelId}-{$messageId}: " . $de->getMessage());
+                }
+            }
+        }
+
+        // If message already exists and was not edited, skip updating TelegramMessage if already up to date
+        if ($existing && !$isEdited && $existing->deal_id && $existing->is_deal == $isDeal) {
+            return [
+                'processed' => true,
+                'duplicate' => true,
+                'message_id' => $messageId,
+                'is_deal' => $isDeal,
+                'deal_id' => $dealId ?: $existing->deal_id,
+                'deal_created' => $dealCreated,
+            ];
+        }
+
+        // Create or update TelegramMessage record safely using updateOrCreate
+        try {
+            $msgRecord = TelegramMessage::updateOrCreate(
+                [
+                    'channel_id' => $channelId,
+                    'message_id' => $messageId,
+                ],
+                [
+                    'sender_id' => $data['sender_id'] ?? ($existing?->sender_id),
+                    'text' => $text,
+                    'media_type' => $mediaType,
+                    'media_local_path' => $mediaPath ?: ($existing?->media_local_path),
+                    'extracted_urls' => array_values(array_unique($urls)),
+                    'is_deal' => $isDeal,
+                    'deal_id' => $dealId ?: ($existing?->deal_id),
+                    'is_edited' => $isEdited || ($existing?->is_edited ?? false),
+                    'edited_at' => $isEdited ? ($editedAt ?: now()) : ($existing?->edited_at),
+                    'raw_payload' => $data['raw'] ?? ($existing?->raw_payload ?? []),
+                    'posted_at' => $postedAt,
+                ]
+            );
+
+            // Update channel counters on new insertions
+            if (!$existing && $channel) {
                 $channel->increment('total_messages_imported');
                 if ($isDeal) {
                     $channel->increment('total_deals_imported');
@@ -152,6 +178,8 @@ class TelegramMessageProcessor
                     'last_message_id' => max($channel->last_message_id ?? 0, $messageId),
                 ]);
             }
+        } catch (\Throwable $e) {
+            Log::warning("Error saving TelegramMessage [{$channelId}-{$messageId}]: " . $e->getMessage());
         }
 
         return [
@@ -159,6 +187,7 @@ class TelegramMessageProcessor
             'message_id' => $messageId,
             'is_deal' => $isDeal,
             'deal_id' => $dealId,
+            'deal_created' => $dealCreated,
         ];
     }
 }

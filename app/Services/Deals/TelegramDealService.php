@@ -18,10 +18,29 @@ class TelegramDealService
     {
         try {
             $this->botToken = Setting::get('deals_telegram_bot_token');
-            $rawChannels = Setting::get('deals_telegram_channels', '@dealsmagnet, @lootdeals');
-            $this->channels = array_filter(array_map('trim', explode(',', $rawChannels)));
+            $rawChannels = Setting::get('deals_telegram_channels', '');
+            $this->channels = array_filter(array_map('trim', explode(',', (string) $rawChannels)));
             $this->enabled = (bool) Setting::get('deals_telegram_enabled', '0');
             $this->apiBase = rtrim(Setting::get('deals_telegram_api_base', 'https://api.telegram.org'), '/');
+
+            // Merge monitored channels from MTProto
+            try {
+                $monitoredUsernames = \App\Models\TelegramMonitoredChannel::where('is_monitored', true)
+                    ->pluck('username')
+                    ->filter()
+                    ->map(fn($u) => '@' . ltrim($u, '@'))
+                    ->toArray();
+
+                if (!empty($monitoredUsernames)) {
+                    $this->channels = array_values(array_unique(array_merge($this->channels, $monitoredUsernames)));
+                }
+            } catch (\Throwable $me) {
+                // Ignore if table doesn't exist yet
+            }
+
+            if (empty($this->channels)) {
+                $this->channels = ['@dealsmagnet', '@lootdeals'];
+            }
         } catch (\Throwable $e) {
             $this->botToken = null;
             $this->channels = [];
@@ -477,6 +496,14 @@ class TelegramDealService
         }
 
         // 2. Regex search in raw text
+        return $this->extractUrlFromRawText($text);
+    }
+
+    /**
+     * Extract product / deal URL from raw text.
+     */
+    public function extractUrlFromRawText(string $text): ?string
+    {
         preg_match_all('/https?:\/\/[^\s<>"]+/i', $text, $urlMatches);
         if (!empty($urlMatches[0])) {
             foreach ($urlMatches[0] as $candidate) {

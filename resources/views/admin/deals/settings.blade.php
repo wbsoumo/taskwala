@@ -197,19 +197,25 @@
         <div class="card card-outline card-secondary shadow-sm mb-4">
             <div class="card-header">
                 <h3 class="card-title font-weight-bold text-dark">
-                    <i class="fas fa-terminal text-secondary mr-1"></i> Server Cron Setup
+                    <i class="fas fa-terminal text-secondary mr-1"></i> Auto-Sync Cron Setup
                 </h3>
             </div>
             <div class="card-body">
-                <p class="small text-muted mb-2">
-                    Add the following standard Laravel cron entry to your server crontab (e.g. cPanel Cron Jobs):
+                <p class="small text-muted mb-1">
+                    <strong>Option 1 (Recommended for cPanel):</strong> Set up a Cron Job in cPanel to run every 10 minutes:
                 </p>
-                <div class="bg-dark text-white p-2 rounded small font-monospace mb-2" style="font-family: monospace;">
+                <div class="bg-dark text-white p-2 rounded small font-monospace mb-2" style="font-family: monospace; word-break: break-all;">
+                    */10 * * * * curl -s "{{ url('/system/cron/deals-sync/taskwala_migrate_sec_9981') }}" >/dev/null 2>&1
+                </div>
+                <p class="small text-muted mb-1">
+                    <strong>Option 2 (Standard Laravel Scheduler):</strong> Run Laravel scheduler every minute:
+                </p>
+                <div class="bg-light border text-dark p-2 rounded small font-monospace mb-2" style="font-family: monospace; word-break: break-all;">
                     * * * * * cd {{ base_path() }} && php artisan schedule:run >> /dev/null 2>&1
                 </div>
-                <small class="text-muted">Or run the artisan command directly:</small>
+                <small class="text-muted">Or manually run the artisan command directly:</small>
                 <div class="bg-light border p-2 rounded small mt-1 font-monospace" style="font-family: monospace;">
-                    php artisan deals:sync
+                    php artisan telegram:mtproto-sync --limit=30
                 </div>
             </div>
         </div>

@@ -332,8 +332,11 @@ async def cmd_sync_history(args):
                     deals_found += 1
 
         # Post to webhook if specified
-        if webhook_url and messages_batch:
-            await manager._post_webhook_batch(messages_batch, webhook_url, secret)
+        if webhook_url and webhook_url.strip() and messages_batch:
+            try:
+                await manager._post_webhook_batch(messages_batch, webhook_url, secret)
+            except Exception:
+                pass
 
         print(json.dumps({
             "success": True,

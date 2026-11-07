@@ -326,13 +326,10 @@ class TelethonClientService
             return ['success' => false, 'error' => 'No active Telegram session found.'];
         }
 
-        $webhookUrl = url('/api/internal/telegram-webhook');
         $args = [
             '--session' => $sessionString,
             '--channel-id' => (string) $channelId,
             '--limit' => (string) $limit,
-            '--webhook-url' => $webhookUrl,
-            '--secret' => $this->secret,
         ];
         if ($apiId) $args['--api-id'] = (string) $apiId;
         if ($apiHash) $args['--api-hash'] = (string) $apiHash;
@@ -343,7 +340,7 @@ class TelethonClientService
         if (($res['success'] ?? false) && !empty($res['messages']) && is_array($res['messages'])) {
             try {
                 $processor = app(TelegramMessageProcessor::class);
-                $processor->processPayload(['batch' => true, 'messages' => $res['messages']]);
+                $res['processed_result'] = $processor->processPayload(['batch' => true, 'messages' => $res['messages']]);
             } catch (\Throwable $te) {
                 Log::warning('Direct batch processing error: ' . $te->getMessage());
             }

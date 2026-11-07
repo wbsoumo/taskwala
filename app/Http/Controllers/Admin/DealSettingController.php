@@ -130,21 +130,68 @@ class DealSettingController extends Controller
     /**
      * Trigger manual sync now from admin.
      */
-    public function syncNow(Request $request, DealAggregatorService $aggregator)
+    public function syncNow(Request $request, DealAggregatorService $aggregator, \App\Services\TelegramMtproto\TelethonClientService $telethonService)
     {
         $channel = $request->input('channel');
+        $mtprotoFound = 0;
+        $mtprotoAdded = 0;
+
+        // 1. If MTProto account is connected, sync monitored channels via MTProto
+        try {
+            $account = \App\Models\TelegramAccount::where('is_connected', true)->first();
+            if ($account && !empty($account->session_string)) {
+                $channelsQuery = \App\Models\TelegramMonitoredChannel::where('is_monitored', true);
+                if ($channel) {
+                    $clean = ltrim(trim($channel), '@');
+                    $channelsQuery->where(function ($q) use ($channel, $clean) {
+                        $q->where('channel_id', $channel)
+                          ->orWhere('username', $clean)
+                          ->orWhere('title', 'like', "%{$clean}%");
+                    });
+                }
+
+                $channels = $channelsQuery->get();
+                foreach ($channels as $ch) {
+                    $res = $telethonService->syncChannelHistory(
+                        channelId: $ch->channel_id,
+                        limit: 35,
+                        sessionString: $account->session_string,
+                        apiId: $account->api_id,
+                        apiHash: $account->api_hash
+                    );
+
+                    if ($res['success'] ?? false) {
+                        $messages = $res['messages'] ?? [];
+                        $mtprotoFound += count($messages);
+                        $procResult = $res['processed_result'] ?? null;
+                        if ($procResult) {
+                            $mtprotoAdded += ($procResult['deals_created'] ?? 0);
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $mte) {
+            \Illuminate\Support\Facades\Log::warning('MTProto sync error in DealSettingController::syncNow: ' . $mte->getMessage());
+        }
+
+        // 2. Standard aggregator sync (Bot API and public web preview)
         $result = $aggregator->syncAll($channel);
 
-        if (isset($result['error'])) {
+        if (isset($result['error']) && $mtprotoFound === 0) {
             return back()->with('error', 'Sync encountered an error: ' . $result['error']);
         }
 
+        $totalFound = ($result['total_found'] ?? 0) + $mtprotoFound;
+        $totalAdded = ($result['total_added'] ?? 0) + $mtprotoAdded;
+        $totalSkipped = $result['total_skipped'] ?? 0;
+        $totalFailed = $result['total_failed'] ?? 0;
+
         $msg = sprintf(
             'Sync completed successfully! Found: %d, Added: %d new deals, Skipped duplicates: %d, Failed: %d.',
-            $result['total_found'],
-            $result['total_added'],
-            $result['total_skipped'],
-            $result['total_failed']
+            $totalFound,
+            $totalAdded,
+            $totalSkipped,
+            $totalFailed
         );
 
         return back()->with('success', $msg);

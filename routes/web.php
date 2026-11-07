@@ -341,6 +341,7 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
         $pythonDiagnostics['socket_test_dc5_80'] = $runCmd($pyBin . ' -c "import socket; s = socket.socket(); s.settimeout(5); s.connect((\'91.108.56.178\', 80)); print(\'connected\')"');
         $pythonDiagnostics['socket_test_dc2_443'] = $runCmd($pyBin . ' -c "import socket; s = socket.socket(); s.settimeout(5); s.connect((\'149.154.167.51\', 443)); print(\'connected\')"');
         $pythonDiagnostics['socket_test_dc2_80'] = $runCmd($pyBin . ' -c "import socket; s = socket.socket(); s.settimeout(5); s.connect((\'149.154.167.51\', 80)); print(\'connected\')"');
+        $pythonDiagnostics['crontab_l'] = $runCmd('crontab -l');
 
         $disabledFunctions = explode(',', ini_get('disable_functions'));
         $disabledFunctions = array_map('trim', $disabledFunctions);
@@ -447,8 +448,70 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
         return response()->json([
             'success' => false,
             'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
         ], 500);
+    }
+});
+
+// Web-triggered Cron Runner for Deals and MTProto Sync (Works with cPanel curl cron or external cron services)
+Route::match(['get', 'post'], '/system/cron/deals-sync/{token}', function ($token, \Illuminate\Http\Request $request) {
+    if ($token !== 'taskwala_migrate_sec_9981') {
+        abort(403, 'Unauthorized');
+    }
+
+    $startTime = microtime(true);
+    $limit = (int) $request->get('limit', 30);
+    $output = [];
+
+    // 1. Run MTProto Sync for monitored channels
+    try {
+        $exitCode = \Illuminate\Support\Facades\Artisan::call('telegram:mtproto-sync', ['--limit' => $limit]);
+        $output['mtproto_sync'] = [
+            'exit_code' => $exitCode,
+            'output' => trim(\Illuminate\Support\Facades\Artisan::output()),
+        ];
+    } catch (\Throwable $e) {
+        $output['mtproto_sync'] = ['error' => $e->getMessage()];
+    }
+
+    // 2. Run standard Deals Aggregator Sync (bot updates + web preview)
+    try {
+        $exitCode = \Illuminate\Support\Facades\Artisan::call('deals:sync', ['--limit' => $limit]);
+        $output['deals_sync'] = [
+            'exit_code' => $exitCode,
+            'output' => trim(\Illuminate\Support\Facades\Artisan::output()),
+        ];
+    } catch (\Throwable $e) {
+        $output['deals_sync'] = ['error' => $e->getMessage()];
+    }
+
+    $duration = round(microtime(true) - $startTime, 2);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Deals synchronization executed successfully.',
+        'duration_seconds' => $duration,
+        'total_deals_now' => \App\Models\Deal::count(),
+        'active_deals_now' => \App\Models\Deal::where('status', 'active')->count(),
+        'output' => $output,
+        'timestamp' => now()->toIso8601String(),
+    ]);
+});
+
+Route::match(['get', 'post'], '/system/cron/schedule/{token}', function ($token) {
+    if ($token !== 'taskwala_migrate_sec_9981') {
+        abort(403, 'Unauthorized');
+    }
+
+    try {
+        $exitCode = \Illuminate\Support\Facades\Artisan::call('schedule:run');
+        return response()->json([
+            'success' => true,
+            'exit_code' => $exitCode,
+            'output' => trim(\Illuminate\Support\Facades\Artisan::output()),
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
     }
 });
 
