@@ -76,6 +76,11 @@ class TelegramMessageProcessor
         $channel = TelegramMonitoredChannel::where('channel_id', $channelId)->first();
         $channelName = $channel ? ($channel->username ? '@' . $channel->username : $channel->title) : (string) $channelId;
 
+        // Check if message already exists
+        $existing = TelegramMessage::where('channel_id', $channelId)
+            ->where('message_id', $messageId)
+            ->first();
+
         // Detect if this is an e-commerce / deal message
         $isDeal = false;
         $dealId = $existing?->deal_id;
