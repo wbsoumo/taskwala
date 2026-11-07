@@ -61,10 +61,13 @@ class Campaign extends Model
         }
 
         if (str_starts_with($this->logo_url, 'http://') || str_starts_with($this->logo_url, 'https://')) {
-            return $this->logo_url;
+            return preg_replace('#^(https?://[^/]+)/public/storage/#', '$1/storage/', $this->logo_url);
         }
 
-        return url($this->logo_url);
+        $clean = ltrim(preg_replace('#^/?(public/)?(storage/)?#', '', $this->logo_url), '/');
+        $baseUrl = rtrim(config('app.url', 'https://taskwala.co.in'), '/');
+        $baseUrl = preg_replace('/^http:/', 'https:', $baseUrl);
+        return $baseUrl . '/storage/' . $clean;
     }
 
     protected static function boot()

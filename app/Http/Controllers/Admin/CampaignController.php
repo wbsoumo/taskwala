@@ -81,7 +81,7 @@ class CampaignController extends Controller
         // Handle File Upload if provided
         if ($request->hasFile('logo_file')) {
             $path = $request->file('logo_file')->store('campaigns', 'public');
-            $validated['logo_url'] = Storage::url($path);
+            $validated['logo_url'] = 'storage/' . ltrim($path, '/');
         }
 
         if (empty($validated['campaign_type'])) {
@@ -158,7 +158,7 @@ class CampaignController extends Controller
         // Handle File Upload if provided
         if ($request->hasFile('logo_file')) {
             $path = $request->file('logo_file')->store('campaigns', 'public');
-            $validated['logo_url'] = Storage::url($path);
+            $validated['logo_url'] = 'storage/' . ltrim($path, '/');
         }
 
         if (empty($validated['campaign_type'])) {
@@ -209,7 +209,7 @@ class CampaignController extends Controller
         $filePath = null;
         if ($request->hasFile('media_file')) {
             $path = $request->file('media_file')->store('collaterals', 'public');
-            $filePath = Storage::url($path);
+            $filePath = 'storage/' . ltrim($path, '/');
         }
 
         $campaign->collaterals()->create([

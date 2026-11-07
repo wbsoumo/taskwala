@@ -44,10 +44,13 @@ class CampaignCollateral extends Model
         }
 
         if (str_starts_with($this->file_path, 'http://') || str_starts_with($this->file_path, 'https://')) {
-            return $this->file_path;
+            return preg_replace('#^(https?://[^/]+)/public/storage/#', '$1/storage/', $this->file_path);
         }
 
-        return url('/' . ltrim($this->file_path, '/'));
+        $clean = ltrim(preg_replace('#^/?(public/)?(storage/)?#', '', $this->file_path), '/');
+        $baseUrl = rtrim(config('app.url', 'https://taskwala.co.in'), '/');
+        $baseUrl = preg_replace('/^http:/', 'https:', $baseUrl);
+        return $baseUrl . '/storage/' . $clean;
     }
 
     public function getThumbnailUrlAttribute(): ?string
@@ -57,9 +60,12 @@ class CampaignCollateral extends Model
         }
 
         if (str_starts_with($this->thumbnail_path, 'http://') || str_starts_with($this->thumbnail_path, 'https://')) {
-            return $this->thumbnail_path;
+            return preg_replace('#^(https?://[^/]+)/public/storage/#', '$1/storage/', $this->thumbnail_path);
         }
 
-        return url($this->thumbnail_path);
+        $clean = ltrim(preg_replace('#^/?(public/)?(storage/)?#', '', $this->thumbnail_path), '/');
+        $baseUrl = rtrim(config('app.url', 'https://taskwala.co.in'), '/');
+        $baseUrl = preg_replace('/^http:/', 'https:', $baseUrl);
+        return $baseUrl . '/storage/' . $clean;
     }
 }

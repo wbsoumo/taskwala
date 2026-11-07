@@ -15,6 +15,7 @@ double _parseDouble(dynamic val) {
 String normalizeMediaUrl(String? url) {
   if (url == null || url.trim().isEmpty) return '';
   var trimmed = url.trim();
+  trimmed = trimmed.replaceAll('/public/storage/', '/storage/');
   if (trimmed.startsWith('//')) {
     return 'https:$trimmed';
   }
@@ -25,6 +26,7 @@ String normalizeMediaUrl(String? url) {
     if (trimmed.startsWith('storage/')) {
       return 'https://taskwala.co.in/$trimmed';
     }
+    return 'https://taskwala.co.in/storage/$trimmed';
   }
   if (trimmed.startsWith('http://taskwala.co.in')) {
     return trimmed.replaceFirst('http://taskwala.co.in', 'https://taskwala.co.in');

@@ -30,26 +30,43 @@ Route::get('/go/{token}', [RedirectController::class, 'redirect'])->name('tracki
 Route::post('/go/{token}/submit', [RedirectController::class, 'submitTask'])->name('tracking.submit');
 
 // Universal media asset handler for cPanel shared hosting (storage symlink fallback)
-Route::get('/storage/{path}', function ($path) {
-    $safePath = str_replace(['..', "\0"], '', $path);
-    $fullPath = storage_path('app/public/' . $safePath);
-    if (file_exists($fullPath) && is_file($fullPath)) {
-        $mime = @mime_content_type($fullPath) ?: 'application/octet-stream';
-        return response()->file($fullPath, [
-            'Content-Type' => $mime,
-            'Cache-Control' => 'public, max-age=604800, immutable',
-        ]);
+$serveStorageAsset = function ($path) {
+    // Strip any leading public/ or storage/ from path parameter
+    $cleanPath = ltrim(preg_replace('#^(public/)?(storage/)?#', '', $path), '/');
+    $safePath = str_replace(['..', "\0"], '', $cleanPath);
+
+    $candidates = [
+        storage_path('app/public/' . $safePath),
+        base_path('storage/app/public/' . $safePath),
+        public_path('storage/' . $safePath),
+        base_path('public/storage/' . $safePath),
+        public_path($safePath),
+        base_path('public/' . $safePath),
+        base_path('storage/' . $safePath),
+    ];
+
+    foreach ($candidates as $candidate) {
+        if (!empty($candidate) && file_exists($candidate) && is_file($candidate)) {
+            $mime = @mime_content_type($candidate) ?: 'application/octet-stream';
+            if (str_ends_with(strtolower($candidate), '.webp')) $mime = 'image/webp';
+            if (str_ends_with(strtolower($candidate), '.svg')) $mime = 'image/svg+xml';
+            if (str_ends_with(strtolower($candidate), '.png')) $mime = 'image/png';
+            if (str_ends_with(strtolower($candidate), '.jpg') || str_ends_with(strtolower($candidate), '.jpeg')) $mime = 'image/jpeg';
+            if (str_ends_with(strtolower($candidate), '.mp4')) $mime = 'video/mp4';
+
+            return response()->file($candidate, [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'public, max-age=604800, immutable',
+                'Access-Control-Allow-Origin' => '*',
+            ]);
+        }
     }
-    $publicPath = public_path('storage/' . $safePath);
-    if (file_exists($publicPath) && is_file($publicPath)) {
-        $mime = @mime_content_type($publicPath) ?: 'application/octet-stream';
-        return response()->file($publicPath, [
-            'Content-Type' => $mime,
-            'Cache-Control' => 'public, max-age=604800, immutable',
-        ]);
-    }
-    abort(404);
-})->where('path', '.*');
+
+    abort(404, 'Media file not found');
+};
+
+Route::get('/storage/{path}', $serveStorageAsset)->where('path', '.*');
+Route::get('/public/storage/{path}', $serveStorageAsset)->where('path', '.*');
 
 // 2. ROOT ROUTE REDIRECT
 Route::get('/', function () {
@@ -214,7 +231,19 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
         $optimizeOutput = \Illuminate\Support\Facades\Artisan::output();
 
         try {
+            // Clean up any double /public/storage/ prefixes in database
+            \Illuminate\Support\Facades\DB::statement("UPDATE campaign_collaterals SET file_path = REPLACE(file_path, '/public/storage/', 'storage/') WHERE file_path LIKE '%/public/storage/%'");
+            \Illuminate\Support\Facades\DB::statement("UPDATE campaign_collaterals SET file_path = TRIM(LEADING '/' FROM file_path) WHERE file_path LIKE '/%'");
+            \Illuminate\Support\Facades\DB::statement("UPDATE campaigns SET logo_url = REPLACE(logo_url, '/public/storage/', 'storage/') WHERE logo_url LIKE '%/public/storage/%'");
+            \Illuminate\Support\Facades\DB::statement("UPDATE campaigns SET logo_url = TRIM(LEADING '/' FROM logo_url) WHERE logo_url LIKE '/%'");
+
+            // Ensure storage directories exist
+            @mkdir(storage_path('app/public/collaterals'), 0755, true);
+            @mkdir(storage_path('app/public/campaigns'), 0755, true);
+
+            // Attempt symlink if missing
             if (!file_exists(public_path('storage'))) {
+                @symlink(storage_path('app/public'), public_path('storage'));
                 @\Illuminate\Support\Facades\Artisan::call('storage:link');
             }
         } catch (\Throwable $e) {}
@@ -271,6 +300,18 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
             'deals_count' => \App\Models\Deal::count(),
             'deals_with_images' => \App\Models\Deal::whereNotNull('image_url')->where('image_url', '!=', '')->count(),
             'deals_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deals'),
+            'collaterals_diagnostic' => \App\Models\CampaignCollateral::latest()->limit(5)->get()->map(function($c) {
+                $clean = ltrim(preg_replace('#^(public/)?(storage/)?#', '', $c->file_path ?? ''), '/');
+                return [
+                    'id' => $c->id,
+                    'title' => $c->title,
+                    'file_path' => $c->file_path,
+                    'media_url' => $c->media_url,
+                    'file_exists_storage_app' => !empty($clean) && file_exists(storage_path('app/public/' . $clean)),
+                    'file_exists_public_storage' => !empty($clean) && file_exists(public_path('storage/' . $clean)),
+                ];
+            }),
+            'disk_storage_files' => @scandir(storage_path('app/public/collaterals')) ?: [],
             'python_diagnostics' => $pythonDiagnostics,
             'cpanel_env' => [
                 'php_version' => PHP_VERSION,
