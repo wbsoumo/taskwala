@@ -312,6 +312,14 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
                 ];
             }),
             'disk_storage_files' => @scandir(storage_path('app/public/collaterals')) ?: [],
+            'campaigns_diagnostic' => \App\Models\Campaign::limit(5)->get()->map(function($c) {
+                return [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'logo_url' => $c->logo_url,
+                    'logo' => $c->logo,
+                ];
+            }),
             'python_diagnostics' => $pythonDiagnostics,
             'cpanel_env' => [
                 'php_version' => PHP_VERSION,

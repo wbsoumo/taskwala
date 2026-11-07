@@ -43,6 +43,7 @@ class CampaignController extends Controller
                             'id' => $col->id,
                             'title' => $col->title,
                             'media_type' => $col->media_type,
+                            'category_preset' => $col->category_preset ?? 'general',
                             'media_url' => $col->media_url,
                             'thumbnail_url' => $col->thumbnail_url,
                             'default_caption' => $col->default_caption,
