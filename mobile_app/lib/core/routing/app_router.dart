@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/models/models.dart';
+import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
@@ -59,9 +60,14 @@ CustomTransitionPage<T> _buildSmoothPage<T>({
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/splash',
     refreshListenable: _AuthListenable(ref),
     redirect: (context, state) {
+      // Splash screen handles animated logo reveal and session check before routing
+      if (state.matchedLocation == '/splash') {
+        return null;
+      }
+
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
           state.matchedLocation == '/forgot-password' ||
@@ -80,6 +86,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        pageBuilder: (context, state) => _buildSmoothPage(
+          context: context,
+          state: state,
+          child: const SplashScreen(),
+        ),
+      ),
       ShellRoute(
         builder: (context, state, child) {
           return MainShellScreen(child: child);
