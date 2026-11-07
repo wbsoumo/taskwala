@@ -58,7 +58,7 @@ CustomTransitionPage<T> _buildSmoothPage<T>({
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/login',
     refreshListenable: _AuthListenable(ref),
     redirect: (context, state) {
       final isAuthRoute = state.matchedLocation == '/login' ||
@@ -67,7 +67,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.matchedLocation == '/verify-email';
 
       final currentAuth = ref.read(authProvider);
-      if (currentAuth.isLoading) return null;
 
       if (!currentAuth.isAuthenticated && !isAuthRoute) {
         return '/login';

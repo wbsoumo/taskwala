@@ -77,7 +77,7 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
       ? (_customerPayout / widget.campaign.affiliatePayout).clamp(0.0, 1.0)
       : 0.0;
 
-  void _generateLink() async {
+  Future<AffiliateLink?> _generateLink() async {
     setState(() {
       _isGenerating = true;
       _error = null;
@@ -123,17 +123,20 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
           linkData['campaign_logo'] = widget.campaign.logo;
         }
 
+        final newLink = AffiliateLink.fromJson(linkData);
         setState(() {
-          _generatedLink = AffiliateLink.fromJson(linkData);
+          _generatedLink = newLink;
           _isGenerating = false;
         });
         ref.invalidate(myLinksProvider);
+        return newLink;
       } else {
         final msg = resData is Map ? resData['message']?.toString() : null;
         setState(() {
           _error = msg ?? 'Failed to generate link. Please try again.';
           _isGenerating = false;
         });
+        return null;
       }
     } on DioException catch (e) {
       String msg = 'Failed to generate link';
@@ -149,12 +152,23 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
         _error = msg;
         _isGenerating = false;
       });
+      return null;
     } catch (e) {
       setState(() {
         _error = 'Error connecting to backend server: $e';
         _isGenerating = false;
       });
+      return null;
     }
+  }
+
+  Future<void> _shareWithCollateralOrGenerate({bool preferWhatsApp = true}) async {
+    AffiliateLink? link = _generatedLink;
+    if (link == null) {
+      link = await _generateLink();
+      if (link == null) return;
+    }
+    await _shareWithCollateral(link.secureUrl, preferWhatsApp: preferWhatsApp);
   }
 
   void _copyToClipboard(String text) {
@@ -509,30 +523,36 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Commission Split Studio',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Commission Split Studio',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Incentivize leads with cashback to boost conversions',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                color: AppColors.textSecondary,
+                              const SizedBox(height: 2),
+                              Text(
+                                'Incentivize leads with cashback to boost conversions',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: AppColors.primaryLight,
                             borderRadius: BorderRadius.circular(10),
@@ -876,72 +896,6 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 22),
-
-                    if (_error != null) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.dangerBg,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.danger),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _error!,
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: AppColors.danger,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // GENERATE BUTTON
-                    SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: _isGenerating ? null : _generateLink,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          elevation: 3,
-                          shadowColor: AppColors.primary.withValues(alpha: 0.4),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        child: _isGenerating
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.auto_awesome_rounded, size: 19, color: Colors.white),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Create & Lock Tracking Link',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
                   ],
                 ),
               ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
@@ -1108,11 +1062,15 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
                         ],
                       ),
                     ),
+                  ],
+                ),
+              ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.96, 0.96)),
+            ],
 
-                    const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-                    // MARKETING COLLATERALS & WHATSAPP POSTERS SECTION
-                    Container(
+            // MARKETING COLLATERALS & WHATSAPP POSTERS SECTION (ALWAYS VISIBLE)
+            Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceSecondary,
@@ -1572,7 +1530,7 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
                                 border: Border.all(color: AppColors.border),
                               ),
                               child: Text(
-                                _getFinalMessage(_generatedLink!.secureUrl),
+                                _getFinalMessage(_generatedLink?.secureUrl ?? 'https://taskwala.co.in/go/your-link'),
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 12,
                                   color: AppColors.textSecondary,
@@ -1608,138 +1566,250 @@ class _LinkGeneratorScreenState extends ConsumerState<LinkGeneratorScreen> {
                           ],
                         ],
                       ),
-                    ),
+            ),
 
-                    const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-                    // PRIMARY ACTION: WHATSAPP SHARE BUTTON WITH MEDIA
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: _isSharingWithMedia
-                            ? null
-                            : () => _shareWithCollateral(_generatedLink!.secureUrl, preferWhatsApp: true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF25D366),
-                          foregroundColor: Colors.white,
-                          elevation: 3,
-                          shadowColor: const Color(0xFF25D366).withValues(alpha: 0.4),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        icon: _isSharingWithMedia
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                              )
-                            : const Icon(Icons.send_rounded, size: 18),
-                        label: Text(
-                          _isSharingWithMedia
-                              ? 'Preparing Media...'
-                              : (_selectedCollateral != null || _userUploadedMediaFile != null)
-                                  ? 'Share on WhatsApp (with Poster)'
-                                  : 'Share on WhatsApp',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                          ),
+            if (_error != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.dangerBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.danger),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: AppColors.danger,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-
-                    const SizedBox(height: 12),
-
-                    // SECONDARY ACTIONS: NATIVE SHARE & TEST LINK
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _isSharingWithMedia
-                                ? null
-                                : () => _shareWithCollateral(_generatedLink!.secureUrl, preferWhatsApp: false),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.textPrimary,
-                              side: const BorderSide(color: AppColors.border, width: 1.2),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              padding: const EdgeInsets.symmetric(vertical: 13),
-                            ),
-                            icon: const Icon(Icons.share_outlined, size: 17),
-                            label: Text(
-                              'Other Apps',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              final uri = Uri.parse(_generatedLink!.secureUrl);
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.textPrimary,
-                              side: const BorderSide(color: AppColors.border, width: 1.2),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              padding: const EdgeInsets.symmetric(vertical: 13),
-                            ),
-                            icon: const Icon(Icons.open_in_new_rounded, size: 17),
-                            label: Text(
-                              'Test Link',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // GO TO MY LINKS OR CREATE ANOTHER
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TextButton(
-                          onPressed: () => context.go('/links'),
-                          child: Text(
-                            'View in My Links →',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text('•', style: TextStyle(color: AppColors.textMuted)),
-                        const SizedBox(width: 8),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _generatedLink = null;
-                            });
-                          },
-                          child: Text(
-                            'Customize Again',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
-              ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.96, 0.96)),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            if (_generatedLink == null) ...[
+              // PRE-GENERATION ACTIONS:
+              // WhatsApp Share Button with Poster (Calls _shareWithCollateralOrGenerate)
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: (_isSharingWithMedia || _isGenerating)
+                      ? null
+                      : () => _shareWithCollateralOrGenerate(preferWhatsApp: true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                    elevation: 3,
+                    shadowColor: const Color(0xFF25D366).withValues(alpha: 0.4),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  icon: (_isSharingWithMedia || _isGenerating)
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send_rounded, size: 18),
+                  label: Text(
+                    _isSharingWithMedia
+                        ? 'Preparing Media...'
+                        : _isGenerating
+                            ? 'Creating Link...'
+                            : (_selectedCollateral != null || _userUploadedMediaFile != null)
+                                ? 'Share on WhatsApp (with Poster)'
+                                : 'Share on WhatsApp',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: (_isSharingWithMedia || _isGenerating)
+                          ? null
+                          : () => _shareWithCollateralOrGenerate(preferWhatsApp: false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimary,
+                        side: const BorderSide(color: AppColors.border, width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                      ),
+                      icon: const Icon(Icons.share_outlined, size: 17),
+                      label: Text(
+                        'Other Apps',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: (_isSharingWithMedia || _isGenerating) ? null : _generateLink,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                      ),
+                      icon: const Icon(Icons.auto_awesome_rounded, size: 17),
+                      label: Text(
+                        'Create Link Only',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ] else ...[
+              // POST-GENERATION ACTIONS:
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _isSharingWithMedia
+                      ? null
+                      : () => _shareWithCollateral(_generatedLink!.secureUrl, preferWhatsApp: true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                    elevation: 3,
+                    shadowColor: const Color(0xFF25D366).withValues(alpha: 0.4),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  icon: _isSharingWithMedia
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send_rounded, size: 18),
+                  label: Text(
+                    _isSharingWithMedia
+                        ? 'Preparing Media...'
+                        : (_selectedCollateral != null || _userUploadedMediaFile != null)
+                            ? 'Share on WhatsApp (with Poster)'
+                            : 'Share on WhatsApp',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _isSharingWithMedia
+                          ? null
+                          : () => _shareWithCollateral(_generatedLink!.secureUrl, preferWhatsApp: false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimary,
+                        side: const BorderSide(color: AppColors.border, width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                      ),
+                      icon: const Icon(Icons.share_outlined, size: 17),
+                      label: Text(
+                        'Other Apps',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final uri = Uri.parse(_generatedLink!.secureUrl);
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimary,
+                        side: const BorderSide(color: AppColors.border, width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                      ),
+                      icon: const Icon(Icons.open_in_new_rounded, size: 17),
+                      label: Text(
+                        'Test Link',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 14),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () => context.go('/links'),
+                    child: Text(
+                      'View in My Links →',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('•', style: TextStyle(color: AppColors.textMuted)),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _generatedLink = null;
+                      });
+                    },
+                    child: Text(
+                      'Customize Again',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ],
         ),
