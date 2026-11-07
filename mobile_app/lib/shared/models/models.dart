@@ -603,6 +603,18 @@ class DealItem {
     return 0;
   }
 
+  String get merchantName {
+    final host = Uri.tryParse(originalUrl)?.host.toLowerCase() ?? '';
+    if (host.contains('amazon') || host.contains('amzn')) return 'Amazon';
+    if (host.contains('flipkart') || host.contains('fkrt')) return 'Flipkart';
+    if (host.contains('myntra')) return 'Myntra';
+    if (host.contains('ajio') || host.contains('ajiio')) return 'Ajio';
+    if (host.contains('tatacliq')) return 'Tata CLiQ';
+    if (host.contains('nykaa')) return 'Nykaa';
+    if (host.contains('gyftr')) return 'Gyftr';
+    return 'Store Deal';
+  }
+
   factory DealItem.fromJson(Map<String, dynamic> json) {
     return DealItem(
       id: _parseInt(json['id']),
