@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../shared/models/models.dart';
@@ -33,7 +34,8 @@ class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
 
     try {
       final api = ref.read(apiClientProvider);
-      await api.post('/links/${link.id}/toggle-status');
+      final linkIdentifier = link.publicId.isNotEmpty ? link.publicId : link.id.toString();
+      await api.post('/links/$linkIdentifier/toggle-status');
       
       ref.invalidate(myLinksProvider);
 
@@ -53,7 +55,7 @@ class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  isNowActive ? 'Link activated & now tracking clicks!' : 'Link paused. Visits will be blocked.',
+                  isNowActive ? 'Link activated & tracking clicks!' : 'Link paused. Visits will be blocked.',
                   style: GoogleFonts.plusJakartaSans(
                     fontWeight: FontWeight.w600,
                     color: isNowActive ? Colors.white : AppColors.textPrimary,
@@ -66,13 +68,17 @@ class _MyLinksScreenState extends ConsumerState<MyLinksScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String msg = 'Could not update link status. Please try again.';
+        if (e is DioException && e.response?.data is Map && e.response?.data['message'] != null) {
+          msg = e.response!.data['message'].toString();
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             content: Text(
-              'Could not update link status: $e',
+              msg,
               style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, color: Colors.white),
             ),
           ),

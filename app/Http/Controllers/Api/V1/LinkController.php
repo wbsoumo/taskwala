@@ -32,33 +32,68 @@ class LinkController extends Controller
 
     public function toggleStatus(Request $request, $id): JsonResponse
     {
-        $link = AffiliateLink::with(['campaign.collaterals' => function ($q) {
-            $q->where('is_active', true)->orderBy('sort_order');
-        }])
-            ->where('user_id', $request->user()->id)
-            ->where(function ($q) use ($id) {
-                $q->where('id', $id)->orWhere('public_id', $id);
-            })
-            ->first();
+        try {
+            $user = $request->user();
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+            }
 
-        if (!$link) {
+            $query = AffiliateLink::with(['campaign.collaterals' => function ($q) {
+                $q->where('is_active', true)->orderBy('sort_order');
+            }])->where('user_id', $user->id);
+
+            if (is_numeric($id)) {
+                $query->where(function ($sub) use ($id) {
+                    $sub->where('id', (int) $id)->orWhere('public_id', (string) $id);
+                });
+            } else {
+                $query->where(function ($sub) use ($id) {
+                    $sub->where('public_id', (string) $id)
+                        ->orWhere('secure_token', (string) $id);
+                });
+            }
+
+            $link = $query->first();
+
+            if (!$link) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tracking link not found.',
+                ], 404);
+            }
+
+            $isCurrentlyActive = (strtolower($link->status) === 'active');
+            $newStatus = $isCurrentlyActive ? 'paused' : 'active';
+
+            try {
+                $link->status = $newStatus;
+                $link->save();
+            } catch (\Throwable $saveErr) {
+                // Fallback to 'disabled' if table enum hasn't been altered yet
+                $newStatus = $isCurrentlyActive ? 'disabled' : 'active';
+                $link->status = $newStatus;
+                $link->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Tracking link successfully " . ($link->status === 'active' ? 'activated' : 'paused') . ".",
+                'status' => $link->status,
+                'is_active' => ($link->status === 'active'),
+                'data' => $link,
+                'link' => $link,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Link toggleStatus error: ' . $e->getMessage(), [
+                'id' => $id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Tracking link not found.',
-            ], 404);
+                'message' => 'Failed to toggle status: ' . $e->getMessage(),
+            ], 500);
         }
-
-        $newStatus = ($link->status === 'active') ? 'paused' : 'active';
-        $link->status = $newStatus;
-        $link->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => "Tracking link successfully " . ($newStatus === 'active' ? 'activated' : 'paused') . ".",
-            'status' => $newStatus,
-            'data' => $link,
-            'link' => $link,
-        ]);
     }
 
     public function generate(Request $request): JsonResponse

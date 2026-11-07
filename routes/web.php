@@ -234,8 +234,10 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
             // Clean up any double /public/storage/ prefixes in database
             \Illuminate\Support\Facades\DB::statement("UPDATE campaign_collaterals SET file_path = REPLACE(file_path, '/public/storage/', 'storage/') WHERE file_path LIKE '%/public/storage/%'");
             \Illuminate\Support\Facades\DB::statement("UPDATE campaign_collaterals SET file_path = TRIM(LEADING '/' FROM file_path) WHERE file_path LIKE '/%'");
-            \Illuminate\Support\Facades\DB::statement("UPDATE campaigns SET logo_url = REPLACE(logo_url, '/public/storage/', 'storage/') WHERE logo_url LIKE '%/public/storage/%'");
             \Illuminate\Support\Facades\DB::statement("UPDATE campaigns SET logo_url = TRIM(LEADING '/' FROM logo_url) WHERE logo_url LIKE '/%'");
+            try {
+                \Illuminate\Support\Facades\DB::statement("ALTER TABLE affiliate_links MODIFY status VARCHAR(32) NOT NULL DEFAULT 'active'");
+            } catch (\Throwable $eAlter) {}
 
             // Ensure storage directories exist
             @mkdir(storage_path('app/public/collaterals'), 0755, true);
