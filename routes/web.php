@@ -374,6 +374,25 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
                     'logo' => $c->logo,
                 ];
             }),
+            'deals_diagnostic' => [
+                'settings' => \App\Models\Setting::where('key', 'like', 'deals_%')->get()->pluck('value', 'key'),
+                'sync_logs' => \App\Models\DealSyncLog::latest()->take(3)->get(),
+                'telegram_account' => \App\Models\TelegramAccount::all(),
+                'monitored_channels' => \App\Models\TelegramMonitoredChannel::all(),
+                'test_fetch' => (function() {
+                    try {
+                        $svc = app(\App\Services\Deals\TelegramDealService::class);
+                        $channels = \App\Models\Setting::get('deals_telegram_channels', '');
+                        $res = [];
+                        foreach (array_filter(array_map('trim', explode(',', $channels))) as $ch) {
+                            $res[$ch] = $svc->testPublicChannel($ch);
+                        }
+                        return $res;
+                    } catch (\Throwable $e) {
+                        return 'Error: ' . $e->getMessage();
+                    }
+                })(),
+            ],
             'fcm_retry_results' => $fcmRetryResults,
             'firebase_diagnostic' => [
                 'cred_file_exists' => file_exists(storage_path('app/firebase-credentials.json')),
