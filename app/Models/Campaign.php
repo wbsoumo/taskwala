@@ -161,4 +161,14 @@ class Campaign extends Model
 
         return true;
     }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    public function getAffiliatePayoutAttribute(): float
+    {
+        return (float) ($this->default_affiliate_payout ?? 0.00);
+    }
 }

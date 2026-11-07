@@ -44,7 +44,7 @@ class AppSliderController extends Controller
      */
     public function create()
     {
-        $campaigns = Campaign::active()->orderBy('name', 'asc')->get(['id', 'name', 'category', 'logo_url', 'payout_type', 'affiliate_payout']);
+        $campaigns = Campaign::active()->orderBy('name', 'asc')->get(['id', 'name', 'category', 'logo_url', 'default_affiliate_payout']);
         $deals = Deal::active()->orderBy('id', 'desc')->take(30)->get(['id', 'public_id', 'title', 'price', 'category']);
 
         $commonRoutes = [
@@ -147,7 +147,7 @@ class AppSliderController extends Controller
     public function edit($id)
     {
         $slider = AppSlider::findOrFail($id);
-        $campaigns = Campaign::active()->orderBy('name', 'asc')->get(['id', 'name', 'category', 'logo_url', 'payout_type', 'affiliate_payout']);
+        $campaigns = Campaign::active()->orderBy('name', 'asc')->get(['id', 'name', 'category', 'logo_url', 'default_affiliate_payout']);
         $deals = Deal::active()->orderBy('id', 'desc')->take(30)->get(['id', 'public_id', 'title', 'price', 'category']);
 
         $commonRoutes = [

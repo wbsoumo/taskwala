@@ -158,7 +158,7 @@
                                     <option value="">-- Choose Campaign --</option>
                                     @foreach($campaigns as $camp)
                                         <option value="{{ $camp->id }}" {{ old('campaign_id') == $camp->id ? 'selected' : '' }}>
-                                            {{ $camp->name }} ({{ $camp->category }} - ₹{{ number_format($camp->affiliate_payout) }})
+                                            {{ $camp->name }} ({{ $camp->category }} - ₹{{ number_format((float) ($camp->default_affiliate_payout ?? $camp->affiliate_payout ?? 0)) }})
                                         </option>
                                     @endforeach
                                 </select>
