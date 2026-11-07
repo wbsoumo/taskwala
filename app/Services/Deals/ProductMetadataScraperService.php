@@ -95,15 +95,15 @@ class ProductMetadataScraperService
     {
         $ua = ($mode === 'browser')
             ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-            : 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
+            : 'WhatsApp/2.21.12.21 A';
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS => 6,
-            CURLOPT_TIMEOUT => 9,
-            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 14,
+            CURLOPT_CONNECTTIMEOUT => 6,
             CURLOPT_ENCODING => '', // Handles gzip, deflate automatically
             CURLOPT_USERAGENT => $ua,
             CURLOPT_SSL_VERIFYPEER => false,
@@ -235,12 +235,18 @@ class ProductMetadataScraperService
         $platform = $result['platform'];
 
         // --- AMAZON ---
-        if ($platform === 'amazon') {
+        if ($platform === 'amazon' || str_contains($result['canonical_url'], 'amazon.')) {
             // Clean up Amazon Image: If it has sizing tokens or social preview borders, get base image
             if (!empty($result['image_url'])) {
-                if (preg_match('/(https:\/\/m\.media-amazon\.com\/images\/I\/[a-zA-Z0-9_\-\+%\.]+?)(?:\._[^\/]+?_\.jpg|\.jpg_[A-Z0-9,_]+?\.jpg)/i', $result['image_url'], $cleanImg)) {
+                if (preg_match('/(https:\/\/[^\/]+\/images\/I\/[a-zA-Z0-9_\-\+%\.]+?)(?:\._[^\/]+?_\.jpg|\.jpg_[^\s"\'<>]+|\._[^\/]+?\.(?:jpg|jpeg|png|webp))/i', $result['image_url'], $cleanImg)) {
                     $result['image_url'] = $cleanImg[1] . '.jpg';
                 }
+            }
+
+            // Fallback for Amazon Search / Category Listing pages
+            if (empty($result['image_url']) && preg_match('/(?:class=[\'"][^\'"]*s-image[^\'"]*[\'"][^>]+src=[\'"]|src=[\'"])(https:\/\/m\.media-amazon\.com\/images\/I\/[a-zA-Z0-9_\-\+%\.]+)/i', $html, $sImg)) {
+                $base = preg_replace('/(?:\._[^\/]+?_\.jpg|\.jpg_[^\s"\'<>]+|\._[^\/]+?\.(?:jpg|jpeg|png|webp))$/i', '', $sImg[1]);
+                $result['image_url'] = $base . '.jpg';
             }
 
             // Extract Amazon MRP
@@ -264,10 +270,12 @@ class ProductMetadataScraperService
         }
 
         // --- FLIPKART ---
-        if ($platform === 'flipkart') {
+        if ($platform === 'flipkart' || str_contains($result['canonical_url'], 'flipkart.')) {
             // Upgrade Flipkart Image to high-resolution (832x832)
             if (!empty($result['image_url']) && str_contains($result['image_url'], 'rukminim2.flixcart.com/image/')) {
                 $result['image_url'] = preg_replace('/\/image\/[0-9]+\/[0-9]+\//', '/image/832/832/', $result['image_url']);
+            } elseif (empty($result['image_url']) && preg_match('/https:\/\/rukminim[0-9]*\.flixcart\.com\/image\/[0-9]+\/[0-9]+\/([a-zA-Z0-9_\-\/]+?\.(?:jpeg|jpg|png|webp))/i', $html, $fkMatches)) {
+                $result['image_url'] = 'https://rukminim2.flixcart.com/image/832/832/' . $fkMatches[1];
             }
 
             // Extract Flipkart MRP from state JSON: "label_2":{"value":{"text":"₹747"}},"label_1":{"value":{"text":"MRP
@@ -290,7 +298,7 @@ class ProductMetadataScraperService
         }
 
         // --- MYNTRA ---
-        if ($platform === 'myntra') {
+        if ($platform === 'myntra' || str_contains($result['canonical_url'], 'myntra.')) {
             // Myntra prices are usually in JSON-LD, but also check pdp-mrp / pdp-price
             if (empty($result['original_price']) && preg_match('/class=\"pdp-mrp\"[^>]*>(?:₹|Rs\.?)?\s*<s>([0-9,]+)<\/s>/i', $html, $mrpM)) {
                 $result['original_price'] = (float) str_replace(',', '', $mrpM[1]);
@@ -301,7 +309,13 @@ class ProductMetadataScraperService
         }
 
         // --- AJIO ---
-        if ($platform === 'ajio') {
+        if ($platform === 'ajio' || str_contains($result['canonical_url'], 'ajio.') || str_contains($result['canonical_url'], 'ajiio.co')) {
+            // Extract Ajio product images from assets
+            if (empty($result['image_url']) && preg_match_all('/https:\/\/assets\.ajio\.com\/medias\/sys_master\/root\/[a-zA-Z0-9_\-\/]+?\.(?:jpg|jpeg|png|webp)/i', $html, $ajioMatches)) {
+                $firstAjio = $ajioMatches[0][0];
+                $result['image_url'] = preg_replace('/-[0-9]+Wx[0-9]+H-/i', '-473Wx593H-', $firstAjio);
+            }
+
             // If Ajio returned 403 or title is missing, attempt parsing slug from URL
             if (empty($result['title']) && preg_match('/ajio\.com\/([^\/]+)\/p\//i', $result['canonical_url'], $slugM)) {
                 $slug = str_replace('-', ' ', $slugM[1]);
@@ -313,6 +327,18 @@ class ProductMetadataScraperService
             }
             if (empty($result['original_price']) && preg_match('/class=\"prod-cp\"[^>]*>(?:₹|Rs\.?)?\s*([0-9,]+)/i', $html, $mrpM)) {
                 $result['original_price'] = (float) str_replace(',', '', $mrpM[1]);
+            }
+        }
+
+        // --- GENERIC FALLBACK FOR ANY STORE ---
+        if (empty($result['image_url']) && preg_match_all('/<img[^>]+(?:data-src|data-lazy-src|src)=[\'"]([^\'"]+\.(?:jpg|jpeg|png|webp)[^\'"]*)[\'"]/i', $html, $anyImgs)) {
+            foreach ($anyImgs[1] as $candidate) {
+                $candidate = html_entity_decode(trim($candidate));
+                if (preg_match('/(?:icon|logo|badge|pixel|spacer|loader|sprite|placeholder|1x1)/i', $candidate)) continue;
+                if (filter_var($candidate, FILTER_VALIDATE_URL)) {
+                    $result['image_url'] = $candidate;
+                    break;
+                }
             }
         }
     }
@@ -345,7 +371,11 @@ class ProductMetadataScraperService
 
         // 3. Check for error page titles
         $lower = strtolower(trim($title));
-        $errorPhrases = ['page not found', 'robot check', 'access denied', '404', 'something went wrong', 'amazon.in: error'];
+        $errorPhrases = [
+            'page not found', 'robot check', 'access denied', '404', 
+            'something went wrong', 'amazon.in: error', '503 - service unavailable', 
+            'service unavailable', 'error 503'
+        ];
         foreach ($errorPhrases as $ep) {
             if (str_contains($lower, $ep)) {
                 return '';
