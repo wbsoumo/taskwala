@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/network/api_client.dart';
 import '../models/models.dart';
 import 'auth_provider.dart';
 
@@ -226,24 +227,162 @@ final missingTicketsProvider = FutureProvider<List<MissingConversionTicket>>((re
   return [];
 });
 
-final dealsProvider = FutureProvider<List<DealItem>>((ref) async {
-  final api = ref.watch(apiClientProvider);
-  try {
-    final response = await api.get('/deals');
-    final data = response.data;
-    final rawList = (data is Map && data['data'] != null)
-        ? data['data']
-        : (data is List ? data : []);
-    if (rawList is List) {
-      return rawList
-          .whereType<Map>()
-          .map((d) => DealItem.fromJson(Map<String, dynamic>.from(d)))
-          .toList();
-    }
-  } catch (e) {
-    debugPrint('Error fetching deals: $e');
+class DealsPaginationState {
+  final List<DealItem> deals;
+  final bool isLoading;
+  final bool isLoadingMore;
+  final bool hasMore;
+  final int currentPage;
+  final int total;
+  final String? error;
+
+  const DealsPaginationState({
+    this.deals = const [],
+    this.isLoading = false,
+    this.isLoadingMore = false,
+    this.hasMore = true,
+    this.currentPage = 1,
+    this.total = 0,
+    this.error,
+  });
+
+  DealsPaginationState copyWith({
+    List<DealItem>? deals,
+    bool? isLoading,
+    bool? isLoadingMore,
+    bool? hasMore,
+    int? currentPage,
+    int? total,
+    String? error,
+  }) {
+    return DealsPaginationState(
+      deals: deals ?? this.deals,
+      isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      hasMore: hasMore ?? this.hasMore,
+      currentPage: currentPage ?? this.currentPage,
+      total: total ?? this.total,
+      error: error,
+    );
   }
-  return [];
+}
+
+class DealsPaginationNotifier extends StateNotifier<DealsPaginationState> {
+  final ApiClient _api;
+
+  DealsPaginationNotifier(this._api) : super(const DealsPaginationState()) {
+    fetchInitial();
+  }
+
+  Future<void> fetchInitial() async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final response = await _api.get('/deals', queryParameters: {
+        'page': 1,
+        'per_page': 20,
+      });
+      final data = response.data;
+      final rawList = (data is Map && data['data'] != null)
+          ? data['data']
+          : (data is List ? data : []);
+
+      final List<DealItem> items = [];
+      if (rawList is List) {
+        for (var d in rawList) {
+          if (d is Map) {
+            items.add(DealItem.fromJson(Map<String, dynamic>.from(d)));
+          }
+        }
+      }
+
+      int total = items.length;
+      int lastPage = 1;
+      if (data is Map && data['pagination'] is Map) {
+        final p = data['pagination'];
+        total = (p['total'] as num?)?.toInt() ?? items.length;
+        lastPage = (p['last_page'] as num?)?.toInt() ?? 1;
+      }
+
+      state = DealsPaginationState(
+        deals: items,
+        isLoading: false,
+        isLoadingMore: false,
+        hasMore: 1 < lastPage,
+        currentPage: 1,
+        total: total,
+      );
+    } catch (e) {
+      debugPrint('Error fetching initial deals: $e');
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> loadNextSlot() async {
+    if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
+
+    final nextPage = state.currentPage + 1;
+    state = state.copyWith(isLoadingMore: true);
+
+    try {
+      final response = await _api.get('/deals', queryParameters: {
+        'page': nextPage,
+        'per_page': 20,
+      });
+      final data = response.data;
+      final rawList = (data is Map && data['data'] != null)
+          ? data['data']
+          : (data is List ? data : []);
+
+      final List<DealItem> newItems = [];
+      if (rawList is List) {
+        for (var d in rawList) {
+          if (d is Map) {
+            newItems.add(DealItem.fromJson(Map<String, dynamic>.from(d)));
+          }
+        }
+      }
+
+      int lastPage = nextPage;
+      int total = state.total;
+      if (data is Map && data['pagination'] is Map) {
+        final p = data['pagination'];
+        total = (p['total'] as num?)?.toInt() ?? total;
+        lastPage = (p['last_page'] as num?)?.toInt() ?? nextPage;
+      }
+
+      // Merge avoiding duplicates by ID
+      final existingIds = state.deals.map((d) => d.id).toSet();
+      final deduplicated = [
+        ...state.deals,
+        ...newItems.where((d) => !existingIds.contains(d.id)),
+      ];
+
+      state = state.copyWith(
+        deals: deduplicated,
+        isLoadingMore: false,
+        currentPage: nextPage,
+        hasMore: nextPage < lastPage && newItems.isNotEmpty,
+        total: total,
+      );
+    } catch (e) {
+      debugPrint('Error loading next deals slot: $e');
+      state = state.copyWith(isLoadingMore: false);
+    }
+  }
+
+  Future<void> refresh() async {
+    await fetchInitial();
+  }
+}
+
+final dealsPaginationProvider = StateNotifierProvider<DealsPaginationNotifier, DealsPaginationState>((ref) {
+  final api = ref.watch(apiClientProvider);
+  return DealsPaginationNotifier(api);
 });
+
+final dealsProvider = Provider<List<DealItem>>((ref) {
+  return ref.watch(dealsPaginationProvider).deals;
+});
+
 
 

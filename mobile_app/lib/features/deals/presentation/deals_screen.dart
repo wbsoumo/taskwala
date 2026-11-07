@@ -19,22 +19,30 @@ class DealsScreen extends ConsumerStatefulWidget {
 
 class _DealsScreenState extends ConsumerState<DealsScreen> {
   bool _isGridView = false;
-  String _selectedCategory = 'All';
-  String _selectedStore = 'All';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
-  static const List<String> _popularStores = [
-    'All',
-    'Amazon',
-    'Flipkart',
-    'Ajio',
-    'Myntra',
-    'Tata CLiQ',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      final max = _scrollController.position.maxScrollExtent;
+      final current = _scrollController.position.pixels;
+      if (current >= max - 280) {
+        ref.read(dealsPaginationProvider.notifier).loadNextSlot();
+      }
+    }
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -70,8 +78,8 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
     HapticFeedback.lightImpact();
     final priceStr = deal.price != null ? '₹${deal.price!.toStringAsFixed(0)}' : 'Check Offer';
     final discountStr = deal.computedDiscount > 0 ? ' (${deal.computedDiscount}% OFF)' : '';
-    final text = '🔥 HOT DEAL ALERT!\n\n${deal.title}\n\n💰 Special Price: $priceStr$discountStr\n🏪 Store: ${deal.merchantName}\n\n👉 Order Online Now: ${deal.effectiveUrl}';
-    Share.share(text, subject: deal.title);
+    final text = '🔥 HOT DEAL ALERT!\n\n${deal.cleanTitle}\n\n💰 Special Price: $priceStr$discountStr\n🏪 Store: ${deal.merchantName}\n\n👉 Order Online Now: ${deal.effectiveUrl}';
+    Share.share(text, subject: deal.cleanTitle);
   }
 
   void _handleCopyLink(DealItem deal) {
@@ -236,134 +244,9 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
     );
   }
 
-  Widget _buildHeroBanner(int count) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF5E50EE), Color(0xFF4536DF), Color(0xFF3829C4)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF5E50EE).withValues(alpha: 0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -25,
-            top: -25,
-            child: Container(
-              width: 110,
-              height: 110,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 40,
-            bottom: -35,
-            child: Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.05),
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Color(0xFF00FF66),
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          'LIVE VERIFIED DEALS',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '$count Hot Offers',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white.withValues(alpha: 0.95),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Trending Loot & Big Discounts',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  letterSpacing: -0.4,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                'Grab live price-drops from Amazon, Flipkart, Ajio & Myntra or share with your network to earn affiliate commission.',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  color: Colors.white.withValues(alpha: 0.88),
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final dealsAsync = ref.watch(dealsProvider);
+    final dealsState = ref.watch(dealsPaginationProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -385,7 +268,7 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
             ),
             const SizedBox(width: 10),
             Text(
-              'Trending Loot Deals',
+              'Trending Deals',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -399,38 +282,72 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
             icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
             onPressed: () {
               HapticFeedback.lightImpact();
-              ref.invalidate(dealsProvider);
+              ref.read(dealsPaginationProvider.notifier).refresh();
             },
             tooltip: 'Refresh Deals',
           ),
           const SizedBox(width: 4),
         ],
       ),
-      body: dealsAsync.when(
-        data: (allDeals) {
-          final categories = ['All', ...{for (var d in allDeals) d.category}];
+      body: Builder(
+        builder: (context) {
+          if (dealsState.isLoading && dealsState.deals.isEmpty) {
+            return _buildShimmerLoading();
+          }
 
-          final filtered = allDeals.where((d) {
-            final matchesCategory = _selectedCategory == 'All' || d.category == _selectedCategory;
-            final matchesStore = _selectedStore == 'All' ||
-                d.merchantName.toLowerCase() == _selectedStore.toLowerCase();
-            final matchesSearch = _searchQuery.isEmpty ||
-                d.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                (d.description?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-                d.merchantName.toLowerCase().contains(_searchQuery.toLowerCase());
-            return matchesCategory && matchesStore && matchesSearch;
-          }).toList();
+          if (dealsState.error != null && dealsState.deals.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.danger),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Failed to load deals',
+                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 16),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      dealsState.error!,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () => ref.read(dealsPaginationProvider.notifier).fetchInitial(),
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text('Retry'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final allDeals = dealsState.deals;
+          final filtered = _searchQuery.isEmpty
+              ? allDeals
+              : allDeals.where((d) {
+                  return d.cleanTitle.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                      (d.description?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
+                      d.merchantName.toLowerCase().contains(_searchQuery.toLowerCase());
+                }).toList();
 
           return RefreshIndicator(
             color: AppColors.primary,
-            onRefresh: () async => ref.invalidate(dealsProvider),
+            onRefresh: () async => ref.read(dealsPaginationProvider.notifier).refresh(),
             child: CustomScrollView(
+              controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
               slivers: [
-                // Hero Banner
-                SliverToBoxAdapter(
-                  child: _buildHeroBanner(allDeals.length),
-                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
                 // Search Bar
                 SliverToBoxAdapter(
@@ -454,7 +371,7 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
                         onChanged: (val) => setState(() => _searchQuery = val.trim()),
                         style: GoogleFonts.plusJakartaSans(fontSize: 13.5, color: AppColors.textPrimary),
                         decoration: InputDecoration(
-                          hintText: 'Search 94+ deals, brands, earphones, shoes...',
+                          hintText: 'Search deals, brands, earphones, shoes...',
                           hintStyle: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppColors.textMuted),
                           prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
                           suffixIcon: _searchQuery.isNotEmpty
@@ -474,129 +391,28 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
                   ),
                 ),
 
-                const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-                // Store Filter Pills
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 38,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _popularStores.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (ctx, idx) {
-                        final store = _popularStores[idx];
-                        final isSelected = _selectedStore == store;
-                        return GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            setState(() => _selectedStore = store);
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.textPrimary : AppColors.surface,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected ? AppColors.textPrimary : AppColors.border,
-                              ),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.12),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Center(
-                              child: Text(
-                                store,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11.5,
-                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                  color: isSelected ? Colors.white : AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 8)),
-
-                // Category Chips
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 34,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: categories.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (ctx, idx) {
-                        final cat = categories[idx];
-                        final isSelected = _selectedCategory == cat;
-                        return GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            setState(() => _selectedCategory = cat);
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primary : AppColors.surfaceSecondary,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isSelected ? AppColors.primary : AppColors.border,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                cat,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected ? Colors.white : AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-
                 // Control Bar: Count & View Switch Button
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
                     child: Row(
                       children: [
                         Text(
-                          '${filtered.length} Deals',
+                          dealsState.total > filtered.length && _searchQuery.isEmpty
+                              ? '${filtered.length} of ${dealsState.total} Deals'
+                              : '${filtered.length} Deals',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        if (_selectedStore != 'All' || _selectedCategory != 'All' || _searchQuery.isNotEmpty) ...[
+                        if (_searchQuery.isNotEmpty) ...[
                           const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () {
                               HapticFeedback.lightImpact();
                               setState(() {
-                                _selectedStore = 'All';
-                                _selectedCategory = 'All';
                                 _searchQuery = '';
                                 _searchController.clear();
                               });
@@ -613,7 +429,7 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
                                   const Icon(Icons.close_rounded, size: 12, color: AppColors.danger),
                                   const SizedBox(width: 2),
                                   Text(
-                                    'Clear Filters',
+                                    'Clear Search',
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
@@ -662,31 +478,33 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Try searching with another keyword or reset the store and category filters.',
+                              _searchQuery.isNotEmpty
+                                  ? 'No deals match "$_searchQuery". Try searching with another keyword.'
+                                  : 'No active deals currently available. Pull down to refresh.',
                               textAlign: TextAlign.center,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 12.5,
                                 color: AppColors.textSecondary,
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () {
-                                HapticFeedback.lightImpact();
-                                setState(() {
-                                  _selectedStore = 'All';
-                                  _selectedCategory = 'All';
-                                  _searchQuery = '';
-                                  _searchController.clear();
-                                });
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            if (_searchQuery.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () {
+                                  HapticFeedback.lightImpact();
+                                  setState(() {
+                                    _searchQuery = '';
+                                    _searchController.clear();
+                                  });
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: const Text('Clear Search Filter'),
                               ),
-                              child: const Text('Reset All Filters'),
-                            ),
+                            ],
                           ],
                         ),
                       ),
@@ -694,7 +512,7 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
                   )
                 else if (_isGridView)
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 95),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     sliver: SliverGrid(
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
@@ -710,7 +528,7 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
                   )
                 else
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 95),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (ctx, idx) => _buildDealListCard(filtered[idx]),
@@ -718,44 +536,56 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
                       ),
                     ),
                   ),
+
+                // Bottom Loading Slot Spinner (Infinite scroll)
+                if (dealsState.isLoadingMore)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.border),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Loading more deals...',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 80)),
               ],
             ),
           );
         },
-        loading: () => _buildShimmerLoading(),
-        error: (err, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.danger),
-                const SizedBox(height: 12),
-                Text(
-                  'Failed to load deals',
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 16),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  err.toString(),
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () => ref.invalidate(dealsProvider),
-                  icon: const Icon(Icons.refresh, size: 16),
-                  label: const Text('Retry'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -917,7 +747,7 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
 
                         // Title
                         Text(
-                          deal.title,
+                          deal.cleanTitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.plusJakartaSans(
@@ -1178,7 +1008,7 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
 
                           // Title
                           Text(
-                            deal.title,
+                            deal.cleanTitle,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.plusJakartaSans(
@@ -1247,52 +1077,65 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
                             children: [
                               Expanded(
                                 child: SizedBox(
-                                  height: 34,
-                                  child: ElevatedButton.icon(
+                                  height: 36,
+                                  child: ElevatedButton(
                                     onPressed: () => _handleGrabDeal(deal),
-                                    icon: const Icon(Icons.bolt_rounded, size: 15),
-                                    label: Text(
-                                      'Grab Deal',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primary,
                                       foregroundColor: Colors.white,
                                       elevation: 0,
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                     ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.bolt_rounded, size: 16),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Grab Deal',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
                               InkWell(
                                 onTap: () => _handleCopyLink(deal),
                                 borderRadius: BorderRadius.circular(10),
                                 child: Container(
-                                  height: 34,
-                                  width: 34,
+                                  height: 36,
+                                  width: 36,
                                   decoration: BoxDecoration(
                                     border: Border.all(color: AppColors.border),
                                     borderRadius: BorderRadius.circular(10),
+                                    color: AppColors.surface,
                                   ),
                                   child: const Icon(Icons.copy_rounded, size: 15, color: AppColors.textSecondary),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
                               InkWell(
                                 onTap: () => _handleShareDeal(deal),
                                 borderRadius: BorderRadius.circular(10),
                                 child: Container(
-                                  height: 34,
-                                  width: 34,
+                                  height: 36,
+                                  width: 36,
                                   decoration: BoxDecoration(
                                     color: AppColors.mintBg,
                                     borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: AppColors.mint.withValues(alpha: 0.2)),
                                   ),
                                   child: const Icon(Icons.share_rounded, size: 15, color: AppColors.mint),
                                 ),

@@ -59,10 +59,9 @@ class Deal extends Model
                 $deal->discount_percent = (int) round((($deal->original_price - $deal->price) / $deal->original_price) * 100);
             }
 
-            // Clean title: remove any raw URLs
+            // Clean title: remove any raw URLs, raw prices, and hype punctuation
             if (!empty($deal->title)) {
-                $deal->title = trim(preg_replace('/https?:\/\/[^\s]+/i', '', $deal->title));
-                $deal->title = preg_replace('/^[\s🔥⚡💥🎉🎁🚨!|:-]+|[\s🔥⚡💥🎉🎁🚨!|:-]+$/u', '', $deal->title);
+                $deal->title = static::cleanTitleString($deal->title, $deal->merchant_name, $deal->description);
             }
 
             // Clean description: strip raw URLs so URLs are not printed directly in text
@@ -73,8 +72,7 @@ class Deal extends Model
 
         static::updating(function ($deal) {
             if ($deal->isDirty('title') && !empty($deal->title)) {
-                $deal->title = trim(preg_replace('/https?:\/\/[^\s]+/i', '', $deal->title));
-                $deal->title = preg_replace('/^[\s🔥⚡💥🎉🎁🚨!|:-]+|[\s🔥⚡💥🎉🎁🚨!|:-]+$/u', '', $deal->title);
+                $deal->title = static::cleanTitleString($deal->title, $deal->merchant_name, $deal->description);
             }
 
             if ($deal->isDirty('description') && !empty($deal->description)) {
@@ -85,6 +83,55 @@ class Deal extends Model
                 $deal->discount_percent = (int) round((($deal->original_price - $deal->price) / $deal->original_price) * 100);
             }
         });
+    }
+
+    /**
+     * Sanitize and extract clean title without raw URLs or standalone prices.
+     */
+    public static function cleanTitleString(?string $title, ?string $merchantName = null, ?string $description = null): string
+    {
+        if (empty($title)) {
+            $title = '';
+        }
+
+        // 1. Strip raw URLs
+        $title = preg_replace('/https?:\/\/[^\s<>"]+/i', '', $title);
+        $title = preg_replace('/\b(?:amzn\.to|fkrt\.co|bit\.ly|t\.co|cutt\.ly)\/[^\s<>"]+/i', '', $title);
+
+        // 2. Strip leading numbers/currency, e.g. "1145", "₹1145", "Rs. 999", "at 499"
+        $title = preg_replace('/^\s*(?:₹|rs\.?|inr)?\s*[\d,]+(?:\.\d{1,2})?\s*(?:\/-)?\s*[-|@:]?\s*/iu', '', $title);
+
+        // 3. Strip trailing price or standalone currency mentions
+        $title = preg_replace('/\s*(?:₹|rs\.?|inr)\s*[\d,]+(?:\.\d{1,2})?\s*$/iu', '', $title);
+
+        // 4. Strip emojis or punctuation at beginning and end
+        $title = preg_replace('/^[\s🔥⚡💥🎉🎁🚨!|:,\.-]+|[\s🔥⚡💥🎉🎁🚨!|:,\.-]+$/u', '', $title);
+
+        $title = trim($title);
+
+        // If title is only digits (like just "1145" after stripping url), or empty
+        if (empty($title) || preg_match('/^\d+$/', $title)) {
+            if (!empty($description)) {
+                $descClean = preg_replace('/https?:\/\/[^\s<>"]+/i', '', $description);
+                $descClean = preg_replace('/^\s*(?:₹|rs\.?|inr)?\s*[\d,]+(?:\.\d{1,2})?\s*(?:\/-)?\s*[-|@:]?\s*/iu', '', $descClean);
+                $descClean = trim(preg_replace('/^[\s🔥⚡💥🎉🎁🚨!|:,\.-]+|[\s🔥⚡💥🎉🎁🚨!|:,\.-]+$/u', '', $descClean));
+                if (!empty($descClean) && !preg_match('/^\d+$/', $descClean)) {
+                    return Str::limit($descClean, 100);
+                }
+            }
+            $store = $merchantName ?: 'Exclusive';
+            return "{$store} Special Deal";
+        }
+
+        return $title;
+    }
+
+    /**
+     * Accessor for title to ensure links and prices never appear in the title/name area.
+     */
+    public function getTitleAttribute($value): string
+    {
+        return static::cleanTitleString($value, $this->merchant_name, $this->attributes['description'] ?? null);
     }
 
     /**

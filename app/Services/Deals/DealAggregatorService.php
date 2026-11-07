@@ -126,7 +126,8 @@ class DealAggregatorService
          }
 
          // 3. Resolve Title, Image, Price, MRP
-         $finalTitle = !empty($meta['title']) ? $meta['title'] : ($payload['title'] ?? 'Exclusive Deal');
+         $rawTitleCandidate = !empty($meta['title']) ? $meta['title'] : ($payload['title'] ?? null);
+         $finalTitle = \App\Models\Deal::cleanTitleString($rawTitleCandidate, null, $payload['description'] ?? null);
          $finalImageUrl = !empty($meta['image_url']) ? $meta['image_url'] : ($payload['image_url'] ?? null);
          $finalPrice = !empty($meta['price']) ? $meta['price'] : ($payload['price'] ?? null);
          $finalOriginalPrice = !empty($meta['original_price']) ? $meta['original_price'] : ($payload['original_price'] ?? null);

@@ -615,6 +615,39 @@ class DealItem {
     return 'Store Deal';
   }
 
+  /// Sanitized product title: guarantees links and prices never show in title/name area
+  String get cleanTitle {
+    var t = title;
+    // 1. Remove URLs
+    t = t.replaceAll(RegExp(r'https?://[^\s<>"]+', caseSensitive: false), '');
+    t = t.replaceAll(RegExp(r'\b(?:amzn\.to|fkrt\.co|bit\.ly|t\.co|cutt\.ly)/[^\s<>"]+', caseSensitive: false), '');
+
+    // 2. Remove leading raw prices or numbers (e.g. "1145", "₹1145", "Rs. 999", "at 499")
+    t = t.replaceAll(RegExp(r'^\s*(?:₹|rs\.?|inr)?\s*[\d,]+(?:\.\d{1,2})?\s*(?:/-)?\s*[-|@:]?\s*', caseSensitive: false), '');
+
+    // 3. Remove trailing raw prices
+    t = t.replaceAll(RegExp(r'\s*(?:₹|rs\.?|inr)\s*[\d,]+(?:\.\d{1,2})?\s*$', caseSensitive: false), '');
+
+    // 4. Strip hype emojis or punctuation at beginning and end
+    t = t.replaceAll(RegExp(r'^[\s🔥⚡💥🎉🎁🚨!|:,\.-]+|[\s🔥⚡💥🎉🎁🚨!|:,\.-]+$'), '');
+    t = t.trim();
+
+    // If empty or only numbers left, fallback gracefully
+    if (t.isEmpty || RegExp(r'^\d+$').hasMatch(t)) {
+      if (description != null && description!.isNotEmpty) {
+        var d = description!.replaceAll(RegExp(r'https?://[^\s<>"]+', caseSensitive: false), '');
+        d = d.replaceAll(RegExp(r'^\s*(?:₹|rs\.?|inr)?\s*[\d,]+(?:\.\d{1,2})?\s*(?:/-)?\s*[-|@:]?\s*', caseSensitive: false), '').trim();
+        d = d.replaceAll(RegExp(r'^[\s🔥⚡💥🎉🎁🚨!|:,\.-]+|[\s🔥⚡💥🎉🎁🚨!|:,\.-]+$'), '');
+        if (d.isNotEmpty && !RegExp(r'^\d+$').hasMatch(d)) {
+          return d.length > 80 ? '${d.substring(0, 80)}...' : d;
+        }
+      }
+      return '$merchantName Special Deal';
+    }
+
+    return t;
+  }
+
   factory DealItem.fromJson(Map<String, dynamic> json) {
     return DealItem(
       id: _parseInt(json['id']),
