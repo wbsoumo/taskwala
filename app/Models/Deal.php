@@ -58,7 +58,49 @@ class Deal extends Model
             if (empty($deal->discount_percent) && $deal->original_price > 0 && $deal->price > 0 && $deal->original_price > $deal->price) {
                 $deal->discount_percent = (int) round((($deal->original_price - $deal->price) / $deal->original_price) * 100);
             }
+
+            // Clean title: remove any raw URLs
+            if (!empty($deal->title)) {
+                $deal->title = trim(preg_replace('/https?:\/\/[^\s]+/i', '', $deal->title));
+                $deal->title = preg_replace('/^[\s🔥⚡💥🎉🎁🚨!|:-]+|[\s🔥⚡💥🎉🎁🚨!|:-]+$/u', '', $deal->title);
+            }
+
+            // Clean description: strip raw URLs so URLs are not printed directly in text
+            if (!empty($deal->description)) {
+                $deal->description = trim(preg_replace('/https?:\/\/[^\s<>"]+/i', '', $deal->description));
+            }
         });
+
+        static::updating(function ($deal) {
+            if ($deal->isDirty('title') && !empty($deal->title)) {
+                $deal->title = trim(preg_replace('/https?:\/\/[^\s]+/i', '', $deal->title));
+                $deal->title = preg_replace('/^[\s🔥⚡💥🎉🎁🚨!|:-]+|[\s🔥⚡💥🎉🎁🚨!|:-]+$/u', '', $deal->title);
+            }
+
+            if ($deal->isDirty('description') && !empty($deal->description)) {
+                $deal->description = trim(preg_replace('/https?:\/\/[^\s<>"]+/i', '', $deal->description));
+            }
+
+            if ($deal->original_price > 0 && $deal->price > 0 && $deal->original_price > $deal->price) {
+                $deal->discount_percent = (int) round((($deal->original_price - $deal->price) / $deal->original_price) * 100);
+            }
+        });
+    }
+
+    /**
+     * Get human-friendly merchant brand name from original URL.
+     */
+    public function getMerchantNameAttribute(): string
+    {
+        $host = strtolower(parse_url($this->original_url, PHP_URL_HOST) ?? '');
+        if (str_contains($host, 'amazon') || str_contains($host, 'amzn')) return 'Amazon';
+        if (str_contains($host, 'flipkart') || str_contains($host, 'fkrt')) return 'Flipkart';
+        if (str_contains($host, 'myntra')) return 'Myntra';
+        if (str_contains($host, 'ajio')) return 'Ajio';
+        if (str_contains($host, 'tatacliq')) return 'Tata CLiQ';
+        if (str_contains($host, 'nykaa')) return 'Nykaa';
+        if (str_contains($host, 'meesho')) return 'Meesho';
+        return ucfirst(explode('.', preg_replace('/^www\./', '', $host))[0] ?? 'Store');
     }
 
     /**

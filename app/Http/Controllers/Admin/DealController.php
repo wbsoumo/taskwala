@@ -235,4 +235,26 @@ class DealController extends Controller
 
         return back()->with('error', 'Link conversion failed: ' . ($conversion['error'] ?? 'Unknown error'));
     }
+
+    /**
+     * Re-scrape and refresh product image, title, MRP, and current price from merchant store.
+     */
+    public function refreshMetadata(Deal $deal)
+    {
+        $res = $this->aggregator->enrichDealMetadata($deal, true);
+
+        if ($res['success']) {
+            $deal = $res['deal'];
+            $msg = sprintf(
+                'Deal metadata refreshed from %s! Image updated, MRP: ₹%s, Price: ₹%s (%s%% OFF).',
+                $deal->merchant_name,
+                number_format($deal->original_price ?? 0, 2),
+                number_format($deal->price ?? 0, 2),
+                $deal->computed_discount ?? 0
+            );
+            return back()->with('success', $msg);
+        }
+
+        return back()->with('error', 'Failed to refresh metadata: ' . ($res['error'] ?? 'Could not fetch product details'));
+    }
 }

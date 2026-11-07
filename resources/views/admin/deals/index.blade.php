@@ -174,20 +174,21 @@
                         <!-- Image -->
                         <td>
                             @if($deal->image_url)
-                                <img src="{{ $deal->image_url }}" alt="{{ $deal->title }}" class="img-thumbnail rounded" style="width: 48px; height: 48px; object-fit: cover;">
+                                <img src="{{ $deal->image_url }}" alt="{{ $deal->title }}" class="img-thumbnail rounded bg-white shadow-sm" style="width: 52px; height: 52px; object-fit: contain; padding: 2px;" loading="lazy">
                             @else
-                                <div class="bg-light rounded d-flex align-items-center justify-content-center text-muted border" style="width: 48px; height: 48px;">
-                                    <i class="fas fa-image fa-lg"></i>
+                                <div class="bg-light rounded d-flex align-items-center justify-content-center text-muted border shadow-sm" style="width: 52px; height: 52px;">
+                                    <i class="fas fa-image fa-lg text-secondary"></i>
                                 </div>
                             @endif
                         </td>
 
                         <!-- Title & Category & Channel -->
                         <td>
-                            <div class="font-weight-bold text-dark text-truncate" style="max-width: 320px;" title="{{ $deal->title }}">
+                            <div class="font-weight-bold text-dark" style="max-width: 320px; line-height: 1.3;" title="{{ $deal->title }}">
                                 {{ $deal->title }}
                             </div>
                             <div class="small mt-1 d-flex flex-wrap gap-1">
+                                <span class="badge badge-primary mr-1"><i class="fas fa-store mr-1"></i>{{ $deal->merchant_name }}</span>
                                 <span class="badge badge-info mr-1"><i class="fas fa-folder mr-1"></i>{{ $deal->category }}</span>
                                 <span class="badge badge-secondary mr-1"><i class="fab fa-telegram-plane mr-1"></i>{{ $deal->source_channel }}</span>
                                 @if($deal->conversion_status === 'converted')
@@ -200,7 +201,7 @@
                             </div>
                         </td>
 
-                        <!-- Price & Discount -->
+                        <!-- Price & MRP & Discount -->
                         <td>
                             @if($deal->price)
                                 <div class="font-weight-bold text-success" style="font-size: 1.05rem;">
@@ -212,7 +213,7 @@
 
                             @if($deal->original_price)
                                 <div class="small text-muted text-decoration-line-through">
-                                    <del>₹{{ number_format($deal->original_price, 2) }}</del>
+                                    <del>MRP: ₹{{ number_format($deal->original_price, 2) }}</del>
                                 </div>
                             @endif
 
@@ -230,26 +231,23 @@
                             </span>
                         </td>
 
-                        <!-- Links -->
+                        <!-- Links (No raw URL strings displayed directly in text) -->
                         <td>
                             @if($deal->affiliate_url)
                                 <div class="d-flex align-items-center mb-1">
-                                    <span class="badge badge-success mr-1">Affiliate</span>
-                                    <a href="{{ $deal->affiliate_url }}" target="_blank" class="text-primary small text-truncate mr-2" style="max-width: 110px;" title="{{ $deal->affiliate_url }}">
-                                        {{ $deal->affiliate_url }}
+                                    <span class="badge badge-success mr-1 font-weight-bold"><i class="fas fa-magic mr-1"></i>EarnKaro</span>
+                                    <a href="{{ $deal->affiliate_url }}" target="_blank" class="btn btn-xs btn-outline-success font-weight-bold mr-1" title="Open Monetized Link">
+                                        <i class="fas fa-external-link-alt mr-1"></i> Visit
                                     </a>
-                                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="navigator.clipboard.writeText('{{ $deal->affiliate_url }}'); alert('Affiliate Link Copied!');" title="Copy Affiliate Link">
+                                    <button type="button" class="btn btn-xs btn-light border text-muted" onclick="navigator.clipboard.writeText('{{ $deal->affiliate_url }}'); alert('Affiliate Link Copied!');" title="Copy Affiliate Link">
                                         <i class="fas fa-copy"></i>
                                     </button>
                                 </div>
                             @endif
                             <div class="d-flex align-items-center">
-                                <span class="badge badge-light border mr-1">Source</span>
-                                <a href="{{ $deal->original_url }}" target="_blank" class="text-muted small text-truncate mr-2" style="max-width: 120px;" title="{{ $deal->original_url }}">
-                                    {{ $deal->original_url }}
-                                </a>
-                                <a href="{{ $deal->original_url }}" target="_blank" class="btn btn-xs btn-link p-0 text-secondary" title="Open Original URL">
-                                    <i class="fas fa-external-link-alt"></i>
+                                <span class="badge badge-light border text-dark mr-1"><i class="fas fa-shopping-bag mr-1"></i>{{ $deal->merchant_name }}</span>
+                                <a href="{{ $deal->original_url }}" target="_blank" class="btn btn-xs btn-outline-secondary" title="Open Merchant Store Page">
+                                    <i class="fas fa-external-link-alt mr-1"></i> Store
                                 </a>
                             </div>
                         </td>
@@ -291,6 +289,12 @@
                         <!-- Actions -->
                         <td class="text-right">
                             <div class="btn-group btn-group-sm">
+                                <form action="{{ route('admin.deals.refresh_metadata', $deal) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-default" title="Re-scrape product image, title, MRP & price from store page">
+                                        <i class="fas fa-sync-alt text-info"></i>
+                                    </button>
+                                </form>
                                 <a href="{{ route('admin.deals.edit', $deal) }}" class="btn btn-default" title="Edit Deal">
                                     <i class="fas fa-edit text-primary"></i>
                                 </a>
@@ -298,7 +302,7 @@
                                     <form action="{{ route('admin.deals.retry_conversion', $deal) }}" method="POST" class="d-inline">
                                         @csrf
                                         <button type="submit" class="btn btn-default" title="Retry EarnKaro Link Conversion">
-                                            <i class="fas fa-sync text-warning"></i>
+                                            <i class="fas fa-magic text-warning"></i>
                                         </button>
                                     </form>
                                 @endif

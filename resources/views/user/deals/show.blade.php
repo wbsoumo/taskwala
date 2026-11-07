@@ -23,8 +23,8 @@
                             </span>
                         @endif
 
-                        <span class="badge badge-light border position-absolute" style="top: 16px; left: 16px; font-size: 0.85rem;">
-                            <i class="fas fa-folder mr-1 text-primary"></i> {{ $deal->category }}
+                        <span class="badge badge-light border position-absolute font-weight-bold" style="top: 16px; left: 16px; font-size: 0.85rem;">
+                            <i class="fas fa-store mr-1 text-primary"></i> {{ $deal->merchant_name }}
                         </span>
 
                         @if($deal->image_url)
@@ -66,7 +66,7 @@
 
                             @if($deal->original_price)
                                 <del class="text-muted h5 mb-0 mr-2">
-                                    ₹{{ number_format($deal->original_price, 2) }}
+                                    MRP: ₹{{ number_format($deal->original_price, 2) }}
                                 </del>
                             @endif
                         </div>

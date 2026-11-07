@@ -354,4 +354,52 @@ class DealsManagementTest extends TestCase
         $this->assertFalse($resRate['success']);
         $this->assertStringContainsString('Rate Limit Exceeded', $resRate['message']);
     }
+
+    public function test_product_metadata_scraper_extracts_image_title_mrp_price()
+    {
+        $scraper = app(\App\Services\Deals\ProductMetadataScraperService::class);
+
+        // Test title cleaning
+        $cleaned = $scraper->cleanProductTitle('🔥 LOOT: Wipro 6W Alpha Downlight : Amazon.in: Home & Kitchen https://amzn.to/3xyz');
+        $this->assertStringNotContainsString('https://', $cleaned);
+        $this->assertStringNotContainsString('Amazon.in:', $cleaned);
+        $this->assertStringContainsString('Wipro 6W Alpha Downlight', $cleaned);
+
+        // Test URL text stripping from descriptions
+        $desc = "Check out this deal!\nBuy here: https://amzn.to/3abc\nFlat 50% discount";
+        $cleanDesc = \App\Services\Deals\ProductMetadataScraperService::stripRawUrlsFromText($desc);
+        $this->assertStringNotContainsString('https://amzn.to/3abc', $cleanDesc);
+        $this->assertStringContainsString('Flat 50% discount', $cleanDesc);
+    }
+
+    public function test_deal_sanitizes_raw_urls_from_title_and_description()
+    {
+        $deal = Deal::create([
+            'title' => '🔥 Special Deal https://fkrt.co/xyz 50% Off 🔥',
+            'description' => "Great offer!\nLink: https://fkrt.co/xyz\nOrder now",
+            'original_url' => 'https://www.flipkart.com/sample-product/p/12345',
+            'price' => 199.00,
+            'original_price' => 747.00,
+        ]);
+
+        $this->assertStringNotContainsString('https://', $deal->title);
+        $this->assertStringNotContainsString('https://', $deal->description);
+        $this->assertEquals(73, $deal->discount_percent);
+        $this->assertEquals('Flipkart', $deal->merchant_name);
+    }
+
+    public function test_admin_can_refresh_deal_metadata()
+    {
+        $deal = Deal::create([
+            'title' => 'Sample Phone',
+            'original_url' => 'https://www.amazon.in/dp/B0CVTNX62C',
+            'price' => 100.00,
+        ]);
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.deals.refresh_metadata', $deal));
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+    }
 }

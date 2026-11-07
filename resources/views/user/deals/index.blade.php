@@ -142,8 +142,8 @@
                                     {{ $deal->computed_discount }}% OFF
                                 </span>
                             @endif
-                            <span class="badge badge-light border position-absolute small" style="top: 10px; left: 10px; z-index: 2;">
-                                <i class="fas fa-tag mr-1 text-primary"></i> {{ $deal->category }}
+                            <span class="badge badge-light border position-absolute small font-weight-bold" style="top: 10px; left: 10px; z-index: 2;">
+                                <i class="fas fa-store mr-1 text-primary"></i> {{ $deal->merchant_name }}
                             </span>
 
                             @if($deal->image_url)
@@ -188,7 +188,7 @@
 
                                     @if($deal->original_price)
                                         <del class="text-muted small">
-                                            ₹{{ number_format($deal->original_price) }}
+                                            MRP ₹{{ number_format($deal->original_price) }}
                                         </del>
                                     @endif
                                 </div>

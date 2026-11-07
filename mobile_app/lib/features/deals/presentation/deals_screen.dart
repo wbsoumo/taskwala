@@ -452,7 +452,7 @@ class _DealsScreenState extends ConsumerState<DealsScreen> {
                     if (deal.originalPrice != null) ...[
                       const SizedBox(width: 8),
                       Text(
-                        '₹${deal.originalPrice!.toStringAsFixed(0)}',
+                        'MRP ₹${deal.originalPrice!.toStringAsFixed(0)}',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           color: AppColors.textMuted,

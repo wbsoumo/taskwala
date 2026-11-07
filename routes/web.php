@@ -73,6 +73,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('/deals/{deal}', [\App\Http\Controllers\Admin\DealController::class, 'destroy'])->name('deals.destroy');
         Route::post('/deals/{deal}/toggle-status', [\App\Http\Controllers\Admin\DealController::class, 'toggleStatus'])->name('deals.toggle_status');
         Route::post('/deals/{deal}/retry-conversion', [\App\Http\Controllers\Admin\DealController::class, 'retryConversion'])->name('deals.retry_conversion');
+        Route::post('/deals/{deal}/refresh-metadata', [\App\Http\Controllers\Admin\DealController::class, 'refreshMetadata'])->name('deals.refresh_metadata');
 
         // Deals Settings & Synchronization
         Route::get('/deals-settings', [\App\Http\Controllers\Admin\DealSettingController::class, 'settings'])->name('deals.settings');
@@ -207,6 +208,14 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
             $output .= "\n" . \Illuminate\Support\Facades\Artisan::output();
         }
 
+        if ($request->boolean('refresh_deals')) {
+            \Illuminate\Support\Facades\Artisan::call('deals:refresh-metadata', [
+                '--all' => $request->boolean('force_all'),
+                '--limit' => (int) $request->get('limit', 100),
+            ]);
+            $output .= "\nDeals Metadata Refresh:\n" . \Illuminate\Support\Facades\Artisan::output();
+        }
+
         // Test python candidates
         $pythonDiagnostics = [];
         $runCmd = function ($commandLine) {
@@ -240,6 +249,8 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
             'git_pull' => $pullOutput,
             'migration_output' => $output,
             'optimize_output' => $optimizeOutput,
+            'deals_count' => \App\Models\Deal::count(),
+            'deals_with_images' => \App\Models\Deal::whereNotNull('image_url')->where('image_url', '!=', '')->count(),
             'deals_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deals'),
             'python_diagnostics' => $pythonDiagnostics,
             'cpanel_env' => [
@@ -248,6 +259,75 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
                 'base_path' => base_path(),
                 'proc_open_enabled' => function_exists('proc_open') && !in_array('proc_open', $disabledFunctions),
             ],
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ], 500);
+    }
+});
+
+// Dedicated endpoint to sync all old deals images, MRP, and prices
+Route::get('/system/sync-deals-metadata/{token}', function ($token, \Illuminate\Http\Request $request) {
+    if ($token !== 'taskwala_migrate_sec_9981') {
+        abort(403, 'Unauthorized');
+    }
+
+    try {
+        $limit = (int) $request->get('limit', 100);
+        $force = $request->boolean('all');
+        $aggregator = app(\App\Services\Deals\DealAggregatorService::class);
+
+        $query = \App\Models\Deal::query();
+        if (!$force) {
+            $query->where(function ($q) {
+                $q->whereNull('image_url')
+                  ->orWhere('image_url', '')
+                  ->orWhereNull('original_price')
+                  ->orWhereNull('price');
+            });
+        }
+
+        $totalMatching = $query->count();
+        $deals = $query->orderBy('posted_at', 'desc')->take($limit)->get();
+
+        $updated = [];
+        $failed = [];
+
+        foreach ($deals as $deal) {
+            $res = $aggregator->enrichDealMetadata($deal, $force);
+            if ($res['success']) {
+                $fresh = $res['deal'];
+                $updated[] = [
+                    'id' => $fresh->id,
+                    'title' => $fresh->title,
+                    'merchant' => $fresh->merchant_name,
+                    'image_url' => $fresh->image_url,
+                    'price' => $fresh->price,
+                    'original_price' => $fresh->original_price,
+                    'discount_percent' => $fresh->discount_percent,
+                ];
+            } else {
+                $failed[] = [
+                    'id' => $deal->id,
+                    'title' => $deal->title,
+                    'error' => $res['error'] ?? 'Unknown error',
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'total_deals_in_database' => \App\Models\Deal::count(),
+            'total_deals_with_images' => \App\Models\Deal::whereNotNull('image_url')->where('image_url', '!=', '')->count(),
+            'total_deals_needing_enrichment' => $totalMatching,
+            'processed_count' => $deals->count(),
+            'updated_count' => count($updated),
+            'failed_count' => count($failed),
+            'updated' => $updated,
+            'failed' => $failed,
         ]);
     } catch (\Throwable $e) {
         return response()->json([
@@ -293,10 +373,19 @@ Route::get('/system/debug-status/{token}', function ($token, \Illuminate\Http\Re
 
         $tgAccount = \App\Models\TelegramAccount::first();
 
+        $totalDeals = \App\Models\Deal::count();
+        $dealsWithImages = \App\Models\Deal::whereNotNull('image_url')->where('image_url', '!=', '')->count();
+        $dealsWithoutImages = \App\Models\Deal::where(function($q) {
+            $q->whereNull('image_url')->orWhere('image_url', '');
+        })->count();
+
         return response()->json([
             'tg_api_reachability' => $tgApi,
             'tg_web_reachability' => $tgWeb,
             'deals_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deals'),
+            'total_deals' => $totalDeals,
+            'deals_with_images' => $dealsWithImages,
+            'deals_without_images' => $dealsWithoutImages,
             'deal_sync_logs_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('deal_sync_logs'),
             'campaign_count' => \App\Models\Campaign::count(),
             'user_count' => \App\Models\User::count(),
