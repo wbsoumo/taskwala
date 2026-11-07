@@ -340,7 +340,17 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
         $pythonDiagnostics['socket_test_dc5_443'] = $runCmd($pyBin . ' -c "import socket; s = socket.socket(); s.settimeout(5); s.connect((\'91.108.56.178\', 443)); print(\'connected\')"');
         $pythonDiagnostics['socket_test_dc5_80'] = $runCmd($pyBin . ' -c "import socket; s = socket.socket(); s.settimeout(5); s.connect((\'91.108.56.178\', 80)); print(\'connected\')"');
         $pythonDiagnostics['socket_test_dc2_443'] = $runCmd($pyBin . ' -c "import socket; s = socket.socket(); s.settimeout(5); s.connect((\'149.154.167.51\', 443)); print(\'connected\')"');
-        $pythonDiagnostics['socket_test_dc2_80'] = $runCmd($pyBin . ' -c "import socket; s = socket.socket(); s.settimeout(5); s.connect((\'149.154.167.51\', 80)); print(\'connected\')"');
+        if ($request->boolean('install_cron')) {
+            $cronLine = '*/10 * * * * curl -s "https://taskwala.co.in/system/cron/deals-sync/taskwala_migrate_sec_9981" >/dev/null 2>&1';
+            $existingCron = $runCmd('crontab -l 2>/dev/null');
+            if (!str_contains($existingCron, 'deals-sync')) {
+                $newCron = trim($existingCron . "\n" . $cronLine) . "\n";
+                $cronFile = tempnam(sys_get_temp_dir(), 'cron');
+                file_put_contents($cronFile, $newCron);
+                $runCmd('crontab ' . escapeshellarg($cronFile));
+                @unlink($cronFile);
+            }
+        }
         $pythonDiagnostics['crontab_l'] = $runCmd('crontab -l');
 
         $disabledFunctions = explode(',', ini_get('disable_functions'));
