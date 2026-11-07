@@ -276,29 +276,42 @@ Route::get('/system/sync-deals-metadata/{token}', function ($token, \Illuminate\
     }
 
     try {
-        $limit = (int) $request->get('limit', 100);
+        $limit = (int) $request->get('limit', 15);
         $force = $request->boolean('all');
+        $missingOnly = $request->boolean('missing_only', true);
         $aggregator = app(\App\Services\Deals\DealAggregatorService::class);
+
+        if ($request->boolean('reset_all')) {
+            \App\Models\Deal::query()->update(['updated_at' => now()->subDays(10)]);
+        }
 
         $query = \App\Models\Deal::query();
         if (!$force) {
-            $query->where(function ($q) {
-                $q->whereNull('image_url')
-                  ->orWhere('image_url', '')
-                  ->orWhereNull('original_price')
-                  ->orWhereNull('price');
-            });
+            if ($missingOnly) {
+                $query->where(function ($q) {
+                    $q->whereNull('image_url')
+                      ->orWhere('image_url', '');
+                });
+            } else {
+                $query->where(function ($q) {
+                    $q->whereNull('image_url')
+                      ->orWhere('image_url', '')
+                      ->orWhereNull('original_price')
+                      ->orWhereNull('price');
+                });
+            }
         }
 
         $totalMatching = $query->count();
-        $deals = $query->orderBy('posted_at', 'desc')->take($limit)->get();
+        // Order by updated_at ASC to cycle through deals that haven't been attempted yet
+        $deals = $query->orderBy('updated_at', 'asc')->take($limit)->get();
 
         $updated = [];
         $failed = [];
 
         foreach ($deals as $deal) {
             $res = $aggregator->enrichDealMetadata($deal, $force);
-            if ($res['success']) {
+            if ($res['success'] && !empty($res['deal']->image_url)) {
                 $fresh = $res['deal'];
                 $updated[] = [
                     'id' => $fresh->id,
@@ -310,10 +323,13 @@ Route::get('/system/sync-deals-metadata/{token}', function ($token, \Illuminate\
                     'discount_percent' => $fresh->discount_percent,
                 ];
             } else {
+                // Touch the deal so it moves to the back of the queue and doesn't get stuck in a loop
+                $deal->touch();
                 $failed[] = [
                     'id' => $deal->id,
                     'title' => $deal->title,
-                    'error' => $res['error'] ?? 'Unknown error',
+                    'original_url' => $deal->original_url,
+                    'error' => $res['error'] ?? 'No image extracted or link inaccessible',
                 ];
             }
         }
@@ -322,6 +338,9 @@ Route::get('/system/sync-deals-metadata/{token}', function ($token, \Illuminate\
             'success' => true,
             'total_deals_in_database' => \App\Models\Deal::count(),
             'total_deals_with_images' => \App\Models\Deal::whereNotNull('image_url')->where('image_url', '!=', '')->count(),
+            'total_deals_without_images' => \App\Models\Deal::where(function ($q) {
+                $q->whereNull('image_url')->orWhere('image_url', '');
+            })->count(),
             'total_deals_needing_enrichment' => $totalMatching,
             'processed_count' => $deals->count(),
             'updated_count' => count($updated),
