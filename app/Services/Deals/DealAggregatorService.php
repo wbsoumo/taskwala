@@ -186,9 +186,16 @@ class DealAggregatorService
         if (!empty($meta['image_url']) && ($force || empty($deal->image_url))) {
             $updates['image_url'] = $meta['image_url'];
         }
-        if (!empty($meta['title']) && ($force || empty($deal->title) || str_contains(strtolower($deal->title), 'deal'))) {
+        if (!empty($meta['title']) && ($force || empty($deal->title) || str_contains(strtolower($deal->title), 'deal') || str_contains($deal->title, 'http') || mb_strlen($deal->title) < 30)) {
             $updates['title'] = $meta['title'];
+        } elseif (!empty($deal->title) && str_contains($deal->title, 'http')) {
+            $updates['title'] = trim(preg_replace('/https?:\/\/[^\s]+/i', '', $deal->title));
         }
+
+        if (!empty($deal->description) && str_contains($deal->description, 'http')) {
+            $updates['description'] = ProductMetadataScraperService::stripRawUrlsFromText($deal->description);
+        }
+
         if (!empty($meta['price']) && ($force || empty($deal->price))) {
             $updates['price'] = $meta['price'];
         }
