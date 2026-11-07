@@ -50,6 +50,7 @@ class ProductMetadataScraperService
             }
 
             if (empty($html)) {
+                $result['error'] = 'HTML empty. HTTP code: ' . $fetchRes['http_code'] . ' Error: ' . ($fetchRes['curl_error'] ?? '');
                 return $result;
             }
 
@@ -118,12 +119,13 @@ class ProductMetadataScraperService
         $html = curl_exec($ch);
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $effectiveUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-        // Note: in PHP 8.0+ curl handles auto-close on handle unset, but curl_close is safe
+        $err = curl_error($ch);
 
         return [
             'html' => is_string($html) ? $html : '',
             'http_code' => $httpCode,
             'effective_url' => $effectiveUrl,
+            'curl_error' => $err,
         ];
     }
 
