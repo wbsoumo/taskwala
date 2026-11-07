@@ -286,7 +286,9 @@ Route::get('/system/sync-deals-metadata/{token}', function ($token, \Illuminate\
         }
 
         $query = \App\Models\Deal::query();
-        if (!$force) {
+        if ($request->filled('deal_id')) {
+            $query->where('id', (int) $request->get('deal_id'));
+        } elseif (!$force) {
             if ($missingOnly) {
                 $query->where(function ($q) {
                     $q->whereNull('image_url')
