@@ -378,18 +378,46 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
                 'settings' => \App\Models\Setting::where('key', 'like', 'deals_%')->get()->pluck('value', 'key'),
                 'sync_logs' => \App\Models\DealSyncLog::latest()->take(3)->get(),
                 'telegram_account' => \App\Models\TelegramAccount::all(),
-                'monitored_channels' => \App\Models\TelegramMonitoredChannel::all(),
+                'monitored_channels' => \App\Models\TelegramMonitoredChannel::where('is_monitored', true)->get(),
                 'test_fetch' => (function() {
                     try {
                         $svc = app(\App\Services\Deals\TelegramDealService::class);
-                        $channels = \App\Models\Setting::get('deals_telegram_channels', '');
+                        $monitored = \App\Models\TelegramMonitoredChannel::where('is_monitored', true)->get();
+                        $channelsToTest = ['looters_hub', 'dealsmagnet'];
+                        foreach ($monitored as $mc) {
+                            if (!empty($mc->username)) $channelsToTest[] = $mc->username;
+                        }
+                        $channelsToTest = array_unique($channelsToTest);
                         $res = [];
-                        foreach (array_filter(array_map('trim', explode(',', $channels))) as $ch) {
+                        foreach ($channelsToTest as $ch) {
                             $res[$ch] = $svc->testPublicChannel($ch);
                         }
                         return $res;
                     } catch (\Throwable $e) {
                         return 'Error: ' . $e->getMessage();
+                    }
+                })(),
+                'tme_curl_test' => (function() {
+                    try {
+                        $resp = \Illuminate\Support\Facades\Http::timeout(6)->withHeaders([
+                            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        ])->get('https://t.me/s/looters_hub');
+                        return [
+                            'status' => $resp->status(),
+                            'body_len' => strlen($resp->body()),
+                            'has_messages' => str_contains($resp->body(), 'tgme_widget_message'),
+                        ];
+                    } catch (\Throwable $e) {
+                        return 'Curl Error: ' . $e->getMessage();
+                    }
+                })(),
+                'telethon_sync_test' => (function() {
+                    try {
+                        $exitCode = \Illuminate\Support\Facades\Artisan::call('telegram:mtproto-sync', ['--limit' => 5]);
+                        $out = \Illuminate\Support\Facades\Artisan::output();
+                        return ['exit_code' => $exitCode, 'output' => trim($out)];
+                    } catch (\Throwable $e) {
+                        return 'Artisan Error: ' . $e->getMessage();
                     }
                 })(),
             ],
