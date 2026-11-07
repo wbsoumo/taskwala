@@ -16,6 +16,11 @@ class WalletController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user()->load('wallet');
+        $wallet = $user->wallet ?? \App\Models\Wallet::firstOrCreate(
+            ['user_id' => $user->id],
+            ['balance' => 0.00, 'pending_balance' => 0.00, 'total_withdrawn' => 0.00, 'currency' => 'INR']
+        );
+
         $transactions = WalletTransaction::where('user_id', $user->id)->latest()->paginate(20);
 
         $payoutRequests = collect();
@@ -25,8 +30,49 @@ class WalletController extends Controller
 
         $minThreshold = (float) \App\Models\Setting::get('min_withdrawal_threshold', 500.00);
 
+        // Calculate earnings from immutable conversion snapshots & ledger
+        $userConversions = \App\Models\Conversion::where('user_id', $user->id);
+        $approvedConversionIds = (clone $userConversions)->where('status', 'approved')->pluck('id');
+        $approvedSnapshotsSum = (float) \App\Models\PayoutSnapshot::whereIn('conversion_id', $approvedConversionIds)->sum('affiliate_commission');
+
+        $pendingConversionIds = (clone $userConversions)->where('status', 'pending')->pluck('id');
+        $pendingSnapshotsSum = (float) \App\Models\PayoutSnapshot::whereIn('conversion_id', $pendingConversionIds)->sum('affiliate_commission');
+
+        $availableBalance = (float) ($wallet->balance ?? 0.00);
+        $totalWithdrawn = (float) ($wallet->total_withdrawn ?? 0.00);
+        $pendingBalance = max((float) ($wallet->pending_balance ?? 0.00), $pendingSnapshotsSum);
+
+        $creditedCommissions = (float) WalletTransaction::where('user_id', $user->id)
+            ->where('direction', 'credit')
+            ->whereIn('type', ['affiliate_commission', 'commission', 'bonus', 'referral_bonus', 'referral_reward', 'adjustment'])
+            ->sum('amount');
+
+        $approvedBalance = max($approvedSnapshotsSum, $creditedCommissions, ($availableBalance + $totalWithdrawn));
+        $totalEarnings = $approvedBalance + $pendingBalance;
+
+        $walletData = array_merge($wallet->toArray(), [
+            'balance' => $availableBalance,
+            'available_balance' => $availableBalance,
+            'pending_balance' => $pendingBalance,
+            'approved_balance' => $approvedBalance,
+            'total_earnings' => $totalEarnings,
+            'total_paid' => $totalWithdrawn,
+            'total_withdrawn' => $totalWithdrawn,
+            'upi_id' => $user->upi_id,
+            'upi_holder_name' => $user->upi_holder_name,
+            'upi_status' => !empty($user->upi_id) ? 'verified' : 'not_added',
+        ]);
+
         return response()->json([
-            'wallet' => $user->wallet,
+            'wallet' => $walletData,
+            'available_balance' => $availableBalance,
+            'pending_balance' => $pendingBalance,
+            'approved_balance' => $approvedBalance,
+            'total_earnings' => $totalEarnings,
+            'total_paid' => $totalWithdrawn,
+            'upi_id' => $user->upi_id,
+            'upi_holder_name' => $user->upi_holder_name,
+            'upi_status' => !empty($user->upi_id) ? 'verified' : 'not_added',
             'transactions' => $transactions,
             'payout_requests' => $payoutRequests,
             'min_withdrawal_threshold' => $minThreshold,

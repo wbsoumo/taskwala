@@ -94,6 +94,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('campaigns/{campaign}/collaterals', [AdminCampaignController::class, 'uploadCollateral'])->name('campaigns.collaterals.upload');
         Route::delete('campaigns/collaterals/{id}', [AdminCampaignController::class, 'deleteCollateral'])->name('campaigns.collaterals.delete');
 
+        // App Sliders & Promotional Media (Image & Video)
+        Route::resource('sliders', \App\Http\Controllers\Admin\AppSliderController::class);
+        Route::post('sliders/{id}/toggle', [\App\Http\Controllers\Admin\AppSliderController::class, 'toggle'])->name('sliders.toggle');
+
         // Deals Management & Aggregation
         Route::get('/deals', [\App\Http\Controllers\Admin\DealController::class, 'index'])->name('deals.index');
         Route::get('/deals/create', [\App\Http\Controllers\Admin\DealController::class, 'create'])->name('deals.create');
@@ -244,6 +248,7 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
             // Ensure storage directories exist
             @mkdir(storage_path('app/public/collaterals'), 0755, true);
             @mkdir(storage_path('app/public/campaigns'), 0755, true);
+            @mkdir(storage_path('app/public/sliders/thumbs'), 0755, true);
 
             // Attempt symlink if missing
             if (!file_exists(public_path('storage'))) {

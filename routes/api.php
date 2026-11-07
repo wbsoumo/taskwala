@@ -20,6 +20,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 
+    // Promotional Sliders & Video Banners (Public & App Home)
+    Route::get('/sliders', [\App\Http\Controllers\Api\V1\AppSliderApiController::class, 'index']);
+
     Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/user/profile', [AuthController::class, 'profile']);

@@ -333,6 +333,27 @@
                         </ul>
                     </li>
 
+                    <li class="nav-item {{ request()->is('admin/sliders*') ? 'menu-open' : '' }}">
+                        <a href="#" class="nav-link {{ request()->is('admin/sliders*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-images text-warning"></i>
+                            <p>App Sliders & Banners <i class="right fas fa-angle-left"></i></p>
+                        </a>
+                        <ul class="nav nav-treeview">
+                            <li class="nav-item">
+                                <a href="{{ route('admin.sliders.index') }}" class="nav-link {{ request()->routeIs('admin.sliders.index') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-info"></i>
+                                    <p>All Sliders</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.sliders.create') }}" class="nav-link {{ request()->routeIs('admin.sliders.create') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-success"></i>
+                                    <p>Add New Slider</p>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
                     <li class="nav-item {{ request()->is('admin/settings*') || request()->is('admin/telegram-mtproto*') ? 'menu-open' : '' }}">
                         <a href="#" class="nav-link {{ request()->is('admin/settings*') || request()->is('admin/telegram-mtproto*') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-cogs"></i>

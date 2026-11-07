@@ -15,6 +15,7 @@ import '../../../shared/widgets/bouncing_card.dart';
 import '../../../shared/widgets/animated_counter.dart';
 import '../../../shared/widgets/category_badge.dart';
 import '../../../shared/widgets/campaign_logo.dart';
+import '../../../shared/widgets/app_slider_widget.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -157,6 +158,7 @@ class DashboardScreen extends ConsumerWidget {
           ref.invalidate(campaignsProvider);
           ref.invalidate(clickReportsProvider);
           ref.invalidate(conversionReportsProvider);
+          ref.invalidate(appSlidersProvider);
         },
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
@@ -181,6 +183,11 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+
+              const SizedBox(height: 18),
+
+              // Interactive Promotional Image & Video Slider
+              const AppSliderWidget(),
 
               const SizedBox(height: 18),
 

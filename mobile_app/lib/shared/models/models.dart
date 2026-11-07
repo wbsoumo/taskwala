@@ -470,15 +470,28 @@ class WalletData {
     final payoutList = payoutData.map((p) => PayoutRequestItem.fromJson(Map<String, dynamic>.from(p as Map))).toList();
 
     final threshold = _parseDouble(json['min_withdrawal_threshold']);
+    final available = _parseDouble(json['available_balance'] ?? json['balance']);
+    final pending = _parseDouble(json['pending_balance']);
+    var approved = _parseDouble(json['approved_balance']);
+    var totalEarned = _parseDouble(json['total_earnings']);
+    final totalPaid = _parseDouble(json['total_paid'] ?? json['total_withdrawn']);
+
+    // Fallbacks if approved or totalEarned are 0 but user has available or paid amounts
+    if (approved == 0.0 && (available > 0 || totalPaid > 0)) {
+      approved = available + totalPaid;
+    }
+    if (totalEarned == 0.0 && (approved > 0 || pending > 0)) {
+      totalEarned = approved + pending;
+    }
 
     return WalletData(
-      availableBalance: _parseDouble(json['available_balance'] ?? json['balance']),
-      pendingBalance: _parseDouble(json['pending_balance']),
-      approvedBalance: _parseDouble(json['approved_balance']),
-      totalEarnings: _parseDouble(json['total_earnings']),
-      totalPaid: _parseDouble(json['total_paid']),
+      availableBalance: available,
+      pendingBalance: pending,
+      approvedBalance: approved,
+      totalEarnings: totalEarned,
+      totalPaid: totalPaid,
       upiId: json['upi_id']?.toString(),
-      upiStatus: json['upi_status']?.toString() ?? 'not_added',
+      upiStatus: json['upi_status']?.toString() ?? (json['upi_id'] != null ? 'verified' : 'not_added'),
       minWithdrawalThreshold: threshold > 0 ? threshold : 500.0,
       transactions: txList,
       payoutRequests: payoutList,
@@ -754,6 +767,56 @@ class DealItem {
       sourceChannel: json['source_channel']?.toString() ?? 'Telegram',
       clicksCount: _parseInt(json['clicks_count']),
       postedAt: json['posted_at']?.toString(),
+    );
+  }
+}
+
+class AppSliderItem {
+  final int id;
+  final String? title;
+  final String? subtitle;
+  final String? badgeText;
+  final String mediaType; // 'image' or 'video'
+  final String mediaUrl;
+  final String? thumbnailUrl;
+  final String actionType; // 'none', 'campaign', 'deal', 'app_route', 'external_url'
+  final String? actionValue;
+  final bool autoPlayVideo;
+  final bool loopVideo;
+  final int order;
+
+  AppSliderItem({
+    required this.id,
+    this.title,
+    this.subtitle,
+    this.badgeText,
+    required this.mediaType,
+    required this.mediaUrl,
+    this.thumbnailUrl,
+    required this.actionType,
+    this.actionValue,
+    this.autoPlayVideo = true,
+    this.loopVideo = true,
+    this.order = 0,
+  });
+
+  bool get isVideo => mediaType.toLowerCase() == 'video';
+  bool get hasAction => actionType != 'none' && (actionValue?.isNotEmpty ?? false);
+
+  factory AppSliderItem.fromJson(Map<String, dynamic> json) {
+    return AppSliderItem(
+      id: json['id'] is int ? json['id'] as int : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
+      title: json['title']?.toString(),
+      subtitle: json['subtitle']?.toString(),
+      badgeText: json['badge_text']?.toString(),
+      mediaType: (json['media_type']?.toString().toLowerCase() == 'video') ? 'video' : 'image',
+      mediaUrl: json['media_url']?.toString() ?? '',
+      thumbnailUrl: json['thumbnail_url']?.toString(),
+      actionType: json['action_type']?.toString().toLowerCase() ?? 'none',
+      actionValue: json['action_value']?.toString(),
+      autoPlayVideo: json['auto_play_video'] == true || json['auto_play_video'] == 1 || json['auto_play_video'] == '1',
+      loopVideo: json['loop_video'] == true || json['loop_video'] == 1 || json['loop_video'] == '1',
+      order: json['order'] is int ? json['order'] as int : int.tryParse(json['order']?.toString() ?? '0') ?? 0,
     );
   }
 }

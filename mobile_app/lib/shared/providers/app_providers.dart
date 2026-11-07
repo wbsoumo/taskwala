@@ -63,6 +63,15 @@ final walletProvider = FutureProvider<WalletData>((ref) async {
 
       walletMap['transactions'] = txList;
 
+      // Transfer any top-level metrics if not in walletMap
+      if (data['available_balance'] != null) walletMap['available_balance'] = data['available_balance'];
+      if (data['pending_balance'] != null) walletMap['pending_balance'] = data['pending_balance'];
+      if (data['approved_balance'] != null) walletMap['approved_balance'] = data['approved_balance'];
+      if (data['total_earnings'] != null) walletMap['total_earnings'] = data['total_earnings'];
+      if (data['total_paid'] != null) walletMap['total_paid'] = data['total_paid'];
+      if (data['upi_id'] != null) walletMap['upi_id'] = data['upi_id'];
+      if (data['upi_status'] != null) walletMap['upi_status'] = data['upi_status'];
+
       if (data['min_withdrawal_threshold'] != null) {
         walletMap['min_withdrawal_threshold'] = data['min_withdrawal_threshold'];
       }
@@ -86,6 +95,22 @@ final walletProvider = FutureProvider<WalletData>((ref) async {
     transactions: [],
     payoutRequests: [],
   );
+});
+
+final appSlidersProvider = FutureProvider<List<AppSliderItem>>((ref) async {
+  final api = ref.watch(apiClientProvider);
+  try {
+    final response = await api.get('/sliders');
+    final data = response.data;
+    if (data is Map && data['sliders'] is List) {
+      return (data['sliders'] as List)
+          .map((item) => AppSliderItem.fromJson(Map<String, dynamic>.from(item as Map)))
+          .toList();
+    }
+  } catch (e) {
+    debugPrint('Error fetching app sliders: $e');
+  }
+  return [];
 });
 
 final payoutRequestsProvider = FutureProvider<List<PayoutRequestItem>>((ref) async {
