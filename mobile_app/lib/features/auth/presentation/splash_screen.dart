@@ -45,8 +45,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -57,21 +55,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       ),
       child: Scaffold(
         backgroundColor: Colors.white,
-        body: SafeArea(
+        body: SizedBox.expand(
           child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: size.width * 0.85,
-                  maxHeight: size.height * 0.60,
-                ),
-                child: Image.asset(
-                  'assets/images/splash_animation.gif',
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
-                ),
-              ),
+            child: Image.asset(
+              'assets/images/tw_mobile_splash_transparent.gif',
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
             ),
           ),
         ),
