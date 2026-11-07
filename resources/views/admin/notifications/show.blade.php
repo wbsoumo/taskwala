@@ -10,6 +10,14 @@
             <i class="fas fa-info-circle text-primary mr-2"></i>Notification #{{ $notification->id }} Details
         </h3>
         <div class="card-tools ml-auto">
+            @if($stats['fcm_failed'] > 0)
+                <form action="{{ route('admin.notifications.retry_failed', $notification->id) }}" method="POST" class="d-inline mr-1" onsubmit="return confirm('Retry sending FCM push notifications to all {{ $stats['fcm_failed'] }} failed recipients?')">
+                    @csrf
+                    <button type="submit" class="btn btn-danger btn-sm font-weight-bold shadow-sm">
+                        <i class="fas fa-redo-alt mr-1"></i> Retry Failed FCM ({{ $stats['fcm_failed'] }})
+                    </button>
+                </form>
+            @endif
             <a href="{{ route('admin.notifications.create') }}" class="btn btn-primary btn-sm font-weight-bold">
                 <i class="fas fa-paper-plane mr-1"></i> Send Another
             </a>
@@ -204,6 +212,14 @@
                             @endif
                         </td>
                         <td class="text-right">
+                            @if($item->fcm_status !== 'sent' && ($item->fcm_token || $item->user?->fcm_token))
+                                <form action="{{ route('admin.notifications.retry_user_fcm', $item->id) }}" method="POST" class="d-inline mr-1">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline-danger btn-xs font-weight-bold" title="Retry push notification to this user">
+                                        <i class="fas fa-redo-alt mr-1"></i> Retry Push
+                                    </button>
+                                </form>
+                            @endif
                             <form action="{{ route('admin.notifications.toggle_read', $item->id) }}" method="POST" class="d-inline">
                                 @csrf
                                 @if($item->is_read)

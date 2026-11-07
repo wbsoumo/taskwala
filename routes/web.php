@@ -183,7 +183,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/notifications', [AdminNotificationController::class, 'store'])->name('notifications.store');
         Route::get('/notifications/users', [AdminNotificationController::class, 'registeredUsers'])->name('notifications.users');
         Route::get('/notifications/{id}', [AdminNotificationController::class, 'show'])->name('notifications.show');
+        Route::post('/notifications/{id}/retry-failed', [AdminNotificationController::class, 'retryFailed'])->name('notifications.retry_failed');
         Route::post('/notifications/user-notification/{id}/toggle-read', [AdminNotificationController::class, 'toggleUserReadStatus'])->name('notifications.toggle_read');
+        Route::post('/notifications/user-notification/{id}/retry-fcm', [AdminNotificationController::class, 'retryUserFcm'])->name('notifications.retry_user_fcm');
 
         // Settings
         Route::get('/settings', [AdminSettingController::class, 'index'])->name('settings.index');
@@ -322,6 +324,19 @@ Route::get('/system/run-migrations/{token}', function ($token, \Illuminate\Http\
                     'logo' => $c->logo,
                 ];
             }),
+            'firebase_diagnostic' => [
+                'cred_file_exists' => file_exists(storage_path('app/firebase-credentials.json')),
+                'cred_file_readable' => is_readable(storage_path('app/firebase-credentials.json')),
+                'token_status' => (function() {
+                    try {
+                        \Illuminate\Support\Facades\Cache::forget('firebase_fcm_oauth_token');
+                        $token = app(\App\Services\FirebaseService::class)->getAccessToken();
+                        return !empty($token) ? 'OK (' . substr($token, 0, 15) . '...)' : 'FAILED: null token';
+                    } catch (\Throwable $e) {
+                        return 'ERROR: ' . $e->getMessage();
+                    }
+                })(),
+            ],
             'python_diagnostics' => $pythonDiagnostics,
             'cpanel_env' => [
                 'php_version' => PHP_VERSION,

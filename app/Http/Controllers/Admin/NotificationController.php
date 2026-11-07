@@ -225,4 +225,103 @@ class NotificationController extends Controller
 
         return view('admin.notifications.users', compact('users', 'stats'));
     }
+
+    public function retryUserFcm(Request $request, $id, FirebaseService $firebase)
+    {
+        $userNotification = UserNotification::with(['user', 'appNotification'])->findOrFail($id);
+        $user = $userNotification->user;
+
+        $token = $userNotification->fcm_token ?: $user?->fcm_token;
+        if (empty($token)) {
+            return back()->with('error', 'User does not have an active FCM device token.');
+        }
+
+        $result = $firebase->sendNotification(
+            fcmToken: $token,
+            title: $userNotification->title,
+            body: $userNotification->body,
+            deeplink: $userNotification->deeplink,
+            imageUrl: $userNotification->image_url
+        );
+
+        if (!empty($result['success'])) {
+            $userNotification->update([
+                'fcm_token' => $token,
+                'fcm_status' => 'sent',
+                'fcm_error' => null,
+            ]);
+
+            if ($userNotification->app_notification_id) {
+                $appNotif = $userNotification->appNotification;
+                if ($appNotif) {
+                    $appNotif->update([
+                        'sent_count' => UserNotification::where('app_notification_id', $appNotif->id)->where('fcm_status', 'sent')->count(),
+                        'failed_count' => UserNotification::where('app_notification_id', $appNotif->id)->where('fcm_status', 'failed')->count(),
+                    ]);
+                }
+            }
+
+            return back()->with('success', "FCM push successfully delivered to {$user?->name} ({$result['message_id']}).");
+        }
+
+        $error = $result['error'] ?? 'Delivery failed';
+        $userNotification->update([
+            'fcm_status' => 'failed',
+            'fcm_error' => $error,
+        ]);
+
+        return back()->with('error', "FCM push retry failed: {$error}");
+    }
+
+    public function retryFailed(Request $request, $id, FirebaseService $firebase)
+    {
+        $notification = AppNotification::findOrFail($id);
+        $failedDeliveries = UserNotification::with('user')
+            ->where('app_notification_id', $notification->id)
+            ->where('fcm_status', 'failed')
+            ->get();
+
+        if ($failedDeliveries->isEmpty()) {
+            return back()->with('info', 'No failed FCM deliveries to retry.');
+        }
+
+        $retried = 0;
+        $succeeded = 0;
+
+        foreach ($failedDeliveries as $item) {
+            $token = $item->fcm_token ?: $item->user?->fcm_token;
+            if (empty($token)) continue;
+
+            $retried++;
+            $result = $firebase->sendNotification(
+                fcmToken: $token,
+                title: $item->title,
+                body: $item->body,
+                deeplink: $item->deeplink,
+                imageUrl: $item->image_url
+            );
+
+            if (!empty($result['success'])) {
+                $succeeded++;
+                $item->update([
+                    'fcm_token' => $token,
+                    'fcm_status' => 'sent',
+                    'fcm_error' => null,
+                ]);
+            } else {
+                $item->update([
+                    'fcm_status' => 'failed',
+                    'fcm_error' => $result['error'] ?? 'Delivery failed',
+                ]);
+            }
+        }
+
+        $notification->update([
+            'sent_count' => UserNotification::where('app_notification_id', $notification->id)->where('fcm_status', 'sent')->count(),
+            'failed_count' => UserNotification::where('app_notification_id', $notification->id)->where('fcm_status', 'failed')->count(),
+        ]);
+
+        return back()->with('success', "Retried {$retried} recipients: {$succeeded} delivered successfully.");
+    }
 }
+

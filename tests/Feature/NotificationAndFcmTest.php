@@ -229,4 +229,65 @@ class NotificationAndFcmTest extends TestCase
         $usersRes = $this->actingAs($admin, 'admin')->get(route('admin.notifications.users'));
         $usersRes->assertStatus(200)->assertSee('Target User');
     }
+
+    public function test_admin_can_retry_failed_fcm_notifications()
+    {
+        $admin = Admin::create([
+            'name' => 'Admin Retry Tester',
+            'email' => 'retryadmin@test.com',
+            'password' => Hash::make('password123'),
+            'status' => 'active',
+        ]);
+
+        $user = User::create([
+            'name' => 'Soumojjit Saha',
+            'email' => 'wbsoumo@test.com',
+            'mobile_number' => '8016222991',
+            'fcm_token' => 'sample_valid_fcm_token_xyz',
+            'password' => Hash::make('Password123!'),
+            'status' => 'active',
+        ]);
+
+        $appNotif = AppNotification::create([
+            'title' => 'Special Cashback Alert',
+            'body' => 'Get 10% cashback now',
+            'target_type' => 'selected_users',
+            'total_targeted' => 1,
+            'sent_count' => 0,
+            'failed_count' => 1,
+        ]);
+
+        $userNotif = UserNotification::create([
+            'app_notification_id' => $appNotif->id,
+            'user_id' => $user->id,
+            'title' => 'Special Cashback Alert',
+            'body' => 'Get 10% cashback now',
+            'fcm_token' => $user->fcm_token,
+            'fcm_status' => 'failed',
+            'fcm_error' => 'Unable to generate Firebase access token',
+            'is_read' => false,
+        ]);
+
+        // Retry single user push
+        $retrySingle = $this->actingAs($admin, 'admin')->post(route('admin.notifications.retry_user_fcm', $userNotif->id));
+        $retrySingle->assertRedirect();
+        $this->assertEquals('sent', $userNotif->fresh()->fcm_status);
+        $this->assertNull($userNotif->fresh()->fcm_error);
+
+        // Reset to failed and test retryFailed batch endpoint
+        $userNotif->update(['fcm_status' => 'failed', 'fcm_error' => 'Connection timeout']);
+        $retryBatch = $this->actingAs($admin, 'admin')->post(route('admin.notifications.retry_failed', $appNotif->id));
+        $retryBatch->assertRedirect();
+        $this->assertEquals('sent', $userNotif->fresh()->fcm_status);
+    }
+
+    public function test_firebase_service_resolves_credentials_properly()
+    {
+        $service = new FirebaseService();
+        $creds = $service->getCredentials();
+        $this->assertIsArray($creds);
+        $this->assertNotEmpty($creds['client_email']);
+        $this->assertNotEmpty($creds['private_key']);
+    }
 }
+
