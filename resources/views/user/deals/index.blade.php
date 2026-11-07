@@ -51,6 +51,53 @@
         color: #fff !important;
         box-shadow: 0 4px 10px rgba(2, 132, 199, 0.28);
     }
+
+    /* Clean modern pagination styling & SVG constraint */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 0;
+    }
+    .pagination .page-item .page-link {
+        color: #334155;
+        border-radius: 8px !important;
+        border: 1px solid #e2e8f0;
+        padding: 8px 16px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        transition: all 0.2s ease;
+    }
+    .pagination .page-item.active .page-link {
+        background-color: #0284c7 !important;
+        border-color: #0284c7 !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3) !important;
+    }
+    .pagination .page-item.disabled .page-link {
+        color: #94a3b8 !important;
+        background: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+        cursor: not-allowed;
+    }
+    .pagination .page-item .page-link:hover:not(.disabled) {
+        background-color: #f0f9ff;
+        border-color: #0284c7;
+        color: #0284c7;
+    }
+    /* Constrain any SVG icons in pagination */
+    .pagination svg, nav svg {
+        width: 1rem !important;
+        height: 1rem !important;
+        max-width: 1rem !important;
+        max-height: 1rem !important;
+        display: inline-block !important;
+        vertical-align: middle;
+    }
 </style>
 @endpush
 
@@ -234,10 +281,15 @@
             @endforelse
         </div>
 
-        <!-- Pagination -->
+        <!-- Pagination Area -->
         @if($deals->hasPages())
-            <div class="d-flex justify-content-center mt-4">
-                {{ $deals->links() }}
+            <div class="d-flex flex-column align-items-center justify-content-center mt-5 mb-5">
+                <nav aria-label="Deals pagination">
+                    {{ $deals->links('pagination::bootstrap-4') }}
+                </nav>
+                <div class="small text-muted mt-2">
+                    Showing <strong>{{ $deals->firstItem() ?? 0 }}</strong> to <strong>{{ $deals->lastItem() ?? 0 }}</strong> of <strong>{{ $deals->total() }}</strong> deals
+                </div>
             </div>
         @endif
     </div>

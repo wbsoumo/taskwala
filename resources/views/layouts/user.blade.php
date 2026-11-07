@@ -42,6 +42,19 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             border: 1px solid #e2e8f0;
         }
+        /* Global Pagination Safeguard & Clean Styling */
+        .pagination svg, nav svg {
+            width: 1rem !important;
+            height: 1rem !important;
+            max-width: 1rem !important;
+            max-height: 1rem !important;
+            display: inline-block !important;
+            vertical-align: middle;
+        }
+        .page-item .page-link {
+            border-radius: 6px;
+            margin: 0 2px;
+        }
     </style>
     @stack('styles')
 </head>
