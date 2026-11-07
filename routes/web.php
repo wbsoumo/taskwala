@@ -285,6 +285,39 @@ Route::get('/system/sync-deals-metadata/{token}', function ($token, \Illuminate\
             \App\Models\Deal::query()->update(['updated_at' => now()->subDays(10)]);
         }
 
+        if ($request->boolean('fix_remaining', true)) {
+            $d92 = \App\Models\Deal::find(92);
+            if ($d92 && empty($d92->image_url)) {
+                $d92->update([
+                    'title' => 'MAYBELLINE NEW YORK Call Me Colossal Bold Eye Kit',
+                    'image_url' => 'https://rukminim2.flixcart.com/image/832/832/xif0q/combo-kit/8/9/d/-original-imahfr8akqjhdhnu.jpeg',
+                    'price' => 199.00,
+                    'original_price' => 399.00,
+                    'discount_percent' => 50,
+                ]);
+            }
+
+            $d16 = \App\Models\Deal::find(16);
+            if ($d16 && empty($d16->image_url)) {
+                $d16->update([
+                    'title' => 'MOTOROLA Pad 60 Neo 8 GB RAM 128 GB ROM 11 inch Wi-Fi+5G Tablet',
+                    'image_url' => 'https://rukminim2.flixcart.com/image/832/832/xif0q/tablet/2/3/h/-enriched-transparent-original-imahfsrkzrhehhyy.png',
+                    'price' => 23999.00,
+                    'original_price' => 60000.00,
+                    'discount_percent' => 60,
+                ]);
+            }
+
+            $d62 = \App\Models\Deal::find(62);
+            if ($d62 && empty($d62->image_url)) {
+                $d62->update([
+                    'title' => 'Get ₹100-300 Cashback On Amazon Fresh Orders',
+                    'image_url' => 'https://m.media-amazon.com/images/I/41K8L8UfBVL.jpg',
+                    'price' => 100.00,
+                ]);
+            }
+        }
+
         $query = \App\Models\Deal::query();
         if ($request->filled('deal_id')) {
             $query->where('id', (int) $request->get('deal_id'));
